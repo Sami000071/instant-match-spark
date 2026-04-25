@@ -1,26 +1,22 @@
 import { createFileRoute } from "@tanstack/react-router";
+import ChatApp from "@/components/ChatApp";
 
 export const Route = createFileRoute("/")({
-  component: Index,
+  head: () => ({
+    meta: [
+      { title: "blink — talk to a stranger in 5 seconds" },
+      {
+        name: "description",
+        content:
+          "Anonymous 1-on-1 chat with mutual 5-second matching. No accounts, no waiting — instant conversations.",
+      },
+      { property: "og:title", content: "blink — talk to a stranger in 5 seconds" },
+      {
+        property: "og:description",
+        content:
+          "Anonymous 1-on-1 chat with mutual 5-second matching. No accounts, no waiting.",
+      },
+    ],
+  }),
+  component: ChatApp,
 });
-
-// IMPORTANT: Replace this placeholder. For sites with multiple pages (About, Services, Contact, etc.),
-// create separate route files (about.tsx, services.tsx, contact.tsx) — don't put all pages in this file.
-function PlaceholderIndex() {
-  return (
-    <div
-      className="flex min-h-screen items-center justify-center"
-      style={{ backgroundColor: "#fcfbf8" }}
-    >
-      <img
-        data-lovable-blank-page-placeholder="REMOVE_THIS"
-        src="https://cdn.gpteng.co/blank-app-v1.svg"
-        alt="Your app will live here!"
-      />
-    </div>
-  );
-}
-
-function Index() {
-  return <PlaceholderIndex />;
-}
