@@ -116,7 +116,7 @@ export async function applyDecision(
 
   if (session.status !== "deciding") return session as MatchSession;
 
-  const update: Record<string, unknown> = {};
+  const update: SessionUpdate = {};
   if (isA) update.user_a_decision = decision;
   else update.user_b_decision = decision;
 
@@ -160,7 +160,7 @@ export async function enforceTimeout(sessionId: string): Promise<MatchSession | 
   if (!deadlinePassed) return session as MatchSession;
 
   const both = session.user_a_decision === "accept" && session.user_b_decision === "accept";
-  const update: Record<string, unknown> = both
+  const update: SessionUpdate = both
     ? { status: "chatting" }
     : { status: "ended", ended_reason: "timeout" };
 
