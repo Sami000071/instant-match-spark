@@ -70,7 +70,7 @@ const EMPTY_PROFILE: Profile = {
 
 export default function ChatApp() {
   const [stage, setStage] = useState<Stage>("home");
-  const [profile, setProfile] = useState<Profile>({ nickname: "", interests: [] });
+  const [profile, setProfile] = useState<Profile>(EMPTY_PROFILE);
   const [session, setSession] = useState<SessionRow | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [draft, setDraft] = useState("");
