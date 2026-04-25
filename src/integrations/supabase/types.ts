@@ -23,11 +23,15 @@ export type Database = {
           left_by: string | null
           status: Database["public"]["Enums"]["session_status"]
           user_a_client_id: string
+          user_a_country: string
           user_a_decision: Database["public"]["Enums"]["decision"]
+          user_a_gender: string
           user_a_interests: string[]
           user_a_nickname: string
           user_b_client_id: string
+          user_b_country: string
           user_b_decision: Database["public"]["Enums"]["decision"]
+          user_b_gender: string
           user_b_interests: string[]
           user_b_nickname: string
         }
@@ -39,11 +43,15 @@ export type Database = {
           left_by?: string | null
           status?: Database["public"]["Enums"]["session_status"]
           user_a_client_id: string
+          user_a_country?: string
           user_a_decision?: Database["public"]["Enums"]["decision"]
+          user_a_gender?: string
           user_a_interests?: string[]
           user_a_nickname: string
           user_b_client_id: string
+          user_b_country?: string
           user_b_decision?: Database["public"]["Enums"]["decision"]
+          user_b_gender?: string
           user_b_interests?: string[]
           user_b_nickname: string
         }
@@ -55,11 +63,15 @@ export type Database = {
           left_by?: string | null
           status?: Database["public"]["Enums"]["session_status"]
           user_a_client_id?: string
+          user_a_country?: string
           user_a_decision?: Database["public"]["Enums"]["decision"]
+          user_a_gender?: string
           user_a_interests?: string[]
           user_a_nickname?: string
           user_b_client_id?: string
+          user_b_country?: string
           user_b_decision?: Database["public"]["Enums"]["decision"]
+          user_b_gender?: string
           user_b_interests?: string[]
           user_b_nickname?: string
         }
@@ -100,21 +112,27 @@ export type Database = {
       queue: {
         Row: {
           client_id: string
+          country: string
           created_at: string
+          gender: string
           id: string
           interests: string[]
           nickname: string
         }
         Insert: {
           client_id: string
+          country?: string
           created_at?: string
+          gender?: string
           id?: string
           interests?: string[]
           nickname: string
         }
         Update: {
           client_id?: string
+          country?: string
           created_at?: string
+          gender?: string
           id?: string
           interests?: string[]
           nickname?: string

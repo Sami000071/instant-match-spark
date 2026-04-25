@@ -12,13 +12,21 @@ import {
 const uuid = z.string().uuid();
 const nickname = z.string().trim().min(1).max(24);
 const interests = z.array(z.string().trim().min(1).max(24)).max(8);
+const gender = z.enum(["male", "female", "unspecified"]);
+const country = z.string().trim().max(8);
 
 export const joinQueueFn = createServerFn({ method: "POST" })
   .inputValidator(
-    z.object({ clientId: uuid, nickname, interests }).parse,
+    z.object({ clientId: uuid, nickname, interests, gender, country }).parse,
   )
   .handler(async ({ data }) => {
-    return joinQueueAndTryMatch(data.clientId, data.nickname, data.interests);
+    return joinQueueAndTryMatch(
+      data.clientId,
+      data.nickname,
+      data.interests,
+      data.gender,
+      data.country,
+    );
   });
 
 export const decideFn = createServerFn({ method: "POST" })
