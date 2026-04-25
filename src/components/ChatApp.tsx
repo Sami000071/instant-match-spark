@@ -1,7 +1,14 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
-import { getClientId, loadProfile, saveProfile, type Profile } from "@/lib/client-id";
+import {
+  getClientId,
+  loadProfile,
+  saveProfile,
+  type Gender,
+  type Profile,
+} from "@/lib/client-id";
+import { COUNTRIES, getCountry } from "@/lib/countries";
 import {
   decideFn,
   enforceTimeoutFn,
@@ -13,8 +20,15 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
-import { Sparkles, Send, X, Check, LogOut, Zap } from "lucide-react";
+import { Sparkles, Send, X, Check, LogOut, Zap, Mars, Venus } from "lucide-react";
 
 type Stage = "home" | "matching" | "deciding" | "chatting" | "ended";
 
