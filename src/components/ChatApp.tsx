@@ -515,18 +515,20 @@ function DecisionScreen({
   const myDecision = isA ? session.user_a_decision : session.user_b_decision;
   const otherNick = isA ? session.user_b_nickname : session.user_a_nickname;
   const otherInterests = isA ? session.user_b_interests : session.user_a_interests;
+  const otherGender = isA ? session.user_b_gender : session.user_a_gender;
+  const otherCountry = isA ? session.user_b_country : session.user_a_country;
+  const countryInfo = useMemo(() => getCountry(otherCountry), [otherCountry]);
 
-  const remaining = Math.max(
-    0,
-    Math.ceil((new Date(session.decide_deadline).getTime() - now) / 1000),
-  );
-  const fraction = Math.max(
-    0,
-    Math.min(
-      1,
-      (new Date(session.decide_deadline).getTime() - now) / 5000,
-    ),
-  );
+  // Local-elapsed countdown — immune to clock skew between client and server.
+  // Reset whenever a new session starts.
+  const startRef = useRef<{ id: string; t0: number }>({ id: "", t0: 0 });
+  if (startRef.current.id !== session.id) {
+    startRef.current = { id: session.id, t0: Date.now() };
+  }
+  const elapsedMs = Math.max(0, now - startRef.current.t0);
+  const remainingMs = Math.max(0, DECIDE_SECONDS * 1000 - elapsedMs);
+  const remaining = Math.ceil(remainingMs / 1000);
+  const fraction = remainingMs / (DECIDE_SECONDS * 1000);
 
   const accepted = myDecision === "accept";
 
@@ -547,6 +549,25 @@ function DecisionScreen({
             <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
               wants to chat
             </p>
+          </div>
+
+          <div className="flex flex-wrap items-center justify-center gap-2">
+            {otherGender === "male" && (
+              <span className="inline-flex items-center gap-1 rounded-full border border-[var(--neon-cyan)]/40 bg-[var(--neon-cyan)]/10 px-2.5 py-1 text-xs font-semibold text-[var(--neon-cyan)]">
+                <Mars className="h-3 w-3" /> Boy
+              </span>
+            )}
+            {otherGender === "female" && (
+              <span className="inline-flex items-center gap-1 rounded-full border border-[var(--neon-pink)]/40 bg-[var(--neon-pink)]/10 px-2.5 py-1 text-xs font-semibold text-[var(--neon-pink)]">
+                <Venus className="h-3 w-3" /> Girl
+              </span>
+            )}
+            {countryInfo && (
+              <span className="inline-flex items-center gap-1 rounded-full border border-border bg-secondary px-2.5 py-1 text-xs font-semibold text-foreground">
+                <span>{countryInfo.flag}</span>
+                {countryInfo.name}
+              </span>
+            )}
           </div>
 
           {otherInterests.length > 0 && (
