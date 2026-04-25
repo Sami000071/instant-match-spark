@@ -14,7 +14,113 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      match_sessions: {
+        Row: {
+          created_at: string
+          decide_deadline: string
+          ended_reason: string | null
+          id: string
+          left_by: string | null
+          status: Database["public"]["Enums"]["session_status"]
+          user_a_client_id: string
+          user_a_decision: Database["public"]["Enums"]["decision"]
+          user_a_interests: string[]
+          user_a_nickname: string
+          user_b_client_id: string
+          user_b_decision: Database["public"]["Enums"]["decision"]
+          user_b_interests: string[]
+          user_b_nickname: string
+        }
+        Insert: {
+          created_at?: string
+          decide_deadline: string
+          ended_reason?: string | null
+          id?: string
+          left_by?: string | null
+          status?: Database["public"]["Enums"]["session_status"]
+          user_a_client_id: string
+          user_a_decision?: Database["public"]["Enums"]["decision"]
+          user_a_interests?: string[]
+          user_a_nickname: string
+          user_b_client_id: string
+          user_b_decision?: Database["public"]["Enums"]["decision"]
+          user_b_interests?: string[]
+          user_b_nickname: string
+        }
+        Update: {
+          created_at?: string
+          decide_deadline?: string
+          ended_reason?: string | null
+          id?: string
+          left_by?: string | null
+          status?: Database["public"]["Enums"]["session_status"]
+          user_a_client_id?: string
+          user_a_decision?: Database["public"]["Enums"]["decision"]
+          user_a_interests?: string[]
+          user_a_nickname?: string
+          user_b_client_id?: string
+          user_b_decision?: Database["public"]["Enums"]["decision"]
+          user_b_interests?: string[]
+          user_b_nickname?: string
+        }
+        Relationships: []
+      }
+      messages: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          sender_client_id: string
+          session_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          sender_client_id: string
+          session_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          sender_client_id?: string
+          session_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "messages_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "match_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      queue: {
+        Row: {
+          client_id: string
+          created_at: string
+          id: string
+          interests: string[]
+          nickname: string
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          id?: string
+          interests?: string[]
+          nickname: string
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          id?: string
+          interests?: string[]
+          nickname?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -23,7 +129,8 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      decision: "pending" | "accept" | "skip"
+      session_status: "deciding" | "chatting" | "ended"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +257,9 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      decision: ["pending", "accept", "skip"],
+      session_status: ["deciding", "chatting", "ended"],
+    },
   },
 } as const
