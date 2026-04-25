@@ -6,14 +6,20 @@ type SessionUpdate = Database["public"]["Tables"]["match_sessions"]["Update"];
 
 const DECIDE_WINDOW_MS = 5000;
 
+export type Gender = "male" | "female" | "unspecified";
+
 export type MatchSession = {
   id: string;
   user_a_client_id: string;
   user_a_nickname: string;
   user_a_interests: string[];
+  user_a_gender: Gender;
+  user_a_country: string;
   user_b_client_id: string;
   user_b_nickname: string;
   user_b_interests: string[];
+  user_b_gender: Gender;
+  user_b_country: string;
   user_a_decision: "pending" | "accept" | "skip";
   user_b_decision: "pending" | "accept" | "skip";
   status: "deciding" | "chatting" | "ended";
