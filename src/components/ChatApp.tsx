@@ -37,9 +37,13 @@ type SessionRow = {
   user_a_client_id: string;
   user_a_nickname: string;
   user_a_interests: string[];
+  user_a_gender: Gender;
+  user_a_country: string;
   user_b_client_id: string;
   user_b_nickname: string;
   user_b_interests: string[];
+  user_b_gender: Gender;
+  user_b_country: string;
   user_a_decision: "pending" | "accept" | "skip";
   user_b_decision: "pending" | "accept" | "skip";
   status: "deciding" | "chatting" | "ended";
@@ -54,6 +58,15 @@ const SUGGESTED_INTERESTS = [
   "music", "gaming", "movies", "art", "tech",
   "books", "travel", "memes", "anime", "sports",
 ];
+
+const DECIDE_SECONDS = 5;
+
+const EMPTY_PROFILE: Profile = {
+  nickname: "",
+  interests: [],
+  gender: "unspecified",
+  country: "",
+};
 
 export default function ChatApp() {
   const [stage, setStage] = useState<Stage>("home");
