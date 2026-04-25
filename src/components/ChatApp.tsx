@@ -13,7 +13,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { ScrollArea } from "@/components/ui/scroll-area";
+
 import { Sparkles, Send, X, Check, LogOut, Zap } from "lucide-react";
 
 type Stage = "home" | "matching" | "deciding" | "chatting" | "ended";
@@ -559,7 +559,7 @@ function ChatScreen({
         </Button>
       </div>
 
-      <ScrollArea className="flex-1" viewportRef={scrollRef}>
+      <div ref={scrollRef} className="flex-1 overflow-y-auto">
         <div className="flex flex-col gap-2 p-4">
           {messages.length === 0 && (
             <p className="py-8 text-center text-xs text-muted-foreground">
@@ -583,7 +583,7 @@ function ChatScreen({
             );
           })}
         </div>
-      </ScrollArea>
+      </div>
 
       <div className="flex items-center gap-2 border-t border-border p-3">
         <Input
