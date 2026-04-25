@@ -1,5 +1,8 @@
 // Server-only helpers for matchmaking. Never imported from client code.
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import type { Database } from "@/integrations/supabase/types";
+
+type SessionUpdate = Database["public"]["Tables"]["match_sessions"]["Update"];
 
 const DECIDE_WINDOW_MS = 5000;
 
