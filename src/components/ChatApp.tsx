@@ -344,8 +344,14 @@ function HomeScreen({
 }) {
   const [nickname, setNickname] = useState(initial.nickname);
   const [interests, setInterests] = useState<string[]>(initial.interests);
+  const [gender, setGender] = useState<Gender>(initial.gender);
+  const [country, setCountry] = useState<string>(initial.country);
 
-  const valid = nickname.trim().length >= 1 && nickname.trim().length <= 24;
+  const valid =
+    nickname.trim().length >= 1 &&
+    nickname.trim().length <= 24 &&
+    gender !== "unspecified" &&
+    country.length > 0;
 
   function toggleInterest(i: string) {
     setInterests((prev) =>
@@ -379,6 +385,59 @@ function HomeScreen({
 
         <div className="space-y-2">
           <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            I am
+          </label>
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={() => setGender("male")}
+              className={
+                "flex h-12 items-center justify-center gap-2 rounded-md border text-sm font-bold transition-all " +
+                (gender === "male"
+                  ? "border-[var(--neon-cyan)] bg-[var(--neon-cyan)]/15 text-[var(--neon-cyan)] glow-cyan"
+                  : "border-border bg-secondary text-muted-foreground hover:border-[var(--neon-cyan)]/50 hover:text-foreground")
+              }
+            >
+              <Mars className="h-4 w-4" />
+              Boy
+            </button>
+            <button
+              type="button"
+              onClick={() => setGender("female")}
+              className={
+                "flex h-12 items-center justify-center gap-2 rounded-md border text-sm font-bold transition-all " +
+                (gender === "female"
+                  ? "border-[var(--neon-pink)] bg-[var(--neon-pink)]/15 text-[var(--neon-pink)] glow-pink"
+                  : "border-border bg-secondary text-muted-foreground hover:border-[var(--neon-pink)]/50 hover:text-foreground")
+              }
+            >
+              <Venus className="h-4 w-4" />
+              Girl
+            </button>
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            Where are you from
+          </label>
+          <Select value={country || undefined} onValueChange={setCountry}>
+            <SelectTrigger className="h-12 bg-input/60 text-base">
+              <SelectValue placeholder="Select your country" />
+            </SelectTrigger>
+            <SelectContent className="max-h-72">
+              {COUNTRIES.map((c) => (
+                <SelectItem key={c.code} value={c.code}>
+                  <span className="mr-2">{c.flag}</span>
+                  {c.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="space-y-2">
+          <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
             Interests <span className="text-muted-foreground/60">(optional, max 8)</span>
           </label>
           <div className="flex flex-wrap gap-2">
@@ -405,7 +464,9 @@ function HomeScreen({
 
         <Button
           disabled={!valid}
-          onClick={() => onStart({ nickname: nickname.trim(), interests })}
+          onClick={() =>
+            onStart({ nickname: nickname.trim(), interests, gender, country })
+          }
           className="h-14 w-full bg-[var(--gradient-accent)] text-base font-bold text-background hover:opacity-90 glow-pink"
         >
           <Sparkles className="mr-2 h-5 w-5" />
