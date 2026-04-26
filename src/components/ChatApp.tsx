@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
-import { getClientId, loadProfile, saveProfile, type Profile } from "@/lib/client-id";
+import { getClientId, loadProfile, saveProfile, type Profile, type Gender } from "@/lib/client-id";
 import {
   decideFn,
   enforceTimeoutFn,
@@ -13,6 +13,14 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { COUNTRIES, flagForCountry } from "@/lib/countries";
 
 import { Sparkles, Send, X, Check, LogOut, Zap } from "lucide-react";
 
@@ -23,9 +31,13 @@ type SessionRow = {
   user_a_client_id: string;
   user_a_nickname: string;
   user_a_interests: string[];
+  user_a_gender: string;
+  user_a_country: string;
   user_b_client_id: string;
   user_b_nickname: string;
   user_b_interests: string[];
+  user_b_gender: string;
+  user_b_country: string;
   user_a_decision: "pending" | "accept" | "skip";
   user_b_decision: "pending" | "accept" | "skip";
   status: "deciding" | "chatting" | "ended";
@@ -35,11 +47,6 @@ type SessionRow = {
 };
 
 type Message = { id: string; sender_client_id: string; content: string; created_at: string };
-
-const SUGGESTED_INTERESTS = [
-  "music", "gaming", "movies", "art", "tech",
-  "books", "travel", "memes", "anime", "sports",
-];
 
 export default function ChatApp() {
   const [stage, setStage] = useState<Stage>("home");
