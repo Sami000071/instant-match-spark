@@ -130,7 +130,24 @@ export default function ChatApp() {
         "postgres_changes",
         { event: "INSERT", schema: "public", table: "messages", filter: `session_id=eq.${session.id}` },
         (payload) => {
-          setMessages((m) => [...m, payload.new as Message]);
+          const incoming = payload.new as Message;
+          setMessages((m) => {
+            // if we already have it (by id), skip
+            if (m.some((x) => x.id === incoming.id)) return m;
+            // replace any optimistic local copy from the same sender with the same content
+            const idx = m.findIndex(
+              (x) =>
+                x.id.startsWith("local-") &&
+                x.sender_client_id === incoming.sender_client_id &&
+                x.content === incoming.content,
+            );
+            if (idx !== -1) {
+              const next = m.slice();
+              next[idx] = incoming;
+              return next;
+            }
+            return [...m, incoming];
+          });
         },
       )
       .subscribe();
