@@ -145,7 +145,20 @@ export default function ChatApp() {
         "postgres_changes",
         { event: "INSERT", schema: "public", table: "messages", filter: `session_id=eq.${session.id}` },
         (payload) => {
-          setMessages((m) => [...m, payload.new as Message]);
+          const incoming = payload.new as Message;
+          setMessages((m) => {
+            // Dedupe: replace any optimistic temp message from same sender with same content
+            const withoutTemp = m.filter(
+              (x) =>
+                !(
+                  x.id.startsWith("temp-") &&
+                  x.sender_client_id === incoming.sender_client_id &&
+                  x.content === incoming.content
+                ),
+            );
+            if (withoutTemp.some((x) => x.id === incoming.id)) return withoutTemp;
+            return [...withoutTemp, incoming];
+          });
         },
       )
       .subscribe();
@@ -242,10 +255,21 @@ export default function ChatApp() {
   async function onSend() {
     if (!session || !draft.trim()) return;
     const content = draft.trim();
+    const cid = clientIdRef.current;
+    const tempId = `temp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
     setDraft("");
-    await sendMsg({
-      data: { sessionId: session.id, clientId: clientIdRef.current, content },
-    }).catch(() => setDraft(content));
+    // Optimistically show our own message immediately
+    setMessages((m) => [
+      ...m,
+      { id: tempId, sender_client_id: cid, content, created_at: new Date().toISOString() },
+    ]);
+    try {
+      await sendMsg({ data: { sessionId: session.id, clientId: cid, content } });
+    } catch {
+      // rollback on failure
+      setMessages((m) => m.filter((x) => x.id !== tempId));
+      setDraft(content);
+    }
   }
 
   // when ended → rematch flow handled in onDecide; if other side ended, also rematch
@@ -531,6 +555,18 @@ function DecisionScreen({
   const remainingMs = Math.max(0, DECIDE_SECONDS * 1000 - elapsedMs);
   const remaining = Math.ceil(remainingMs / 1000);
   const fraction = remainingMs / (DECIDE_SECONDS * 1000);
+
+  // When local timer hits 0, auto-skip if not already decided.
+  // Server enforce will also clean up; this ensures fast UX even on slow networks.
+  const firedRef = useRef<string>("");
+  useEffect(() => {
+    if (remainingMs > 0) return;
+    if (firedRef.current === session.id) return;
+    if (myDecision === "pending") {
+      firedRef.current = session.id;
+      onDecide("skip");
+    }
+  }, [remainingMs, myDecision, session.id, onDecide]);
 
   const accepted = myDecision === "accept";
 
