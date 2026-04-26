@@ -50,7 +50,12 @@ type Message = { id: string; sender_client_id: string; content: string; created_
 
 export default function ChatApp() {
   const [stage, setStage] = useState<Stage>("home");
-  const [profile, setProfile] = useState<Profile>({ nickname: "", interests: [] });
+  const [profile, setProfile] = useState<Profile>({
+    nickname: "",
+    gender: "unspecified",
+    country: "",
+    interests: [],
+  });
   const [session, setSession] = useState<SessionRow | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [draft, setDraft] = useState("");
