@@ -11,9 +11,13 @@ export type MatchSession = {
   user_a_client_id: string;
   user_a_nickname: string;
   user_a_interests: string[];
+  user_a_gender: string;
+  user_a_country: string;
   user_b_client_id: string;
   user_b_nickname: string;
   user_b_interests: string[];
+  user_b_gender: string;
+  user_b_country: string;
   user_a_decision: "pending" | "accept" | "skip";
   user_b_decision: "pending" | "accept" | "skip";
   status: "deciding" | "chatting" | "ended";
