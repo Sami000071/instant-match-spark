@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
-import { getClientId, loadProfile, saveProfile, type Profile, type Gender } from "@/lib/client-id";
+import { getClientId, loadProfile, saveProfile, type Profile } from "@/lib/client-id";
 import {
   decideFn,
   enforceTimeoutFn,
@@ -13,14 +13,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { COUNTRIES, flagForCountry } from "@/lib/countries";
 
 import { Sparkles, Send, X, Check, LogOut, Zap } from "lucide-react";
 
@@ -31,13 +23,9 @@ type SessionRow = {
   user_a_client_id: string;
   user_a_nickname: string;
   user_a_interests: string[];
-  user_a_gender: string;
-  user_a_country: string;
   user_b_client_id: string;
   user_b_nickname: string;
   user_b_interests: string[];
-  user_b_gender: string;
-  user_b_country: string;
   user_a_decision: "pending" | "accept" | "skip";
   user_b_decision: "pending" | "accept" | "skip";
   status: "deciding" | "chatting" | "ended";
@@ -48,14 +36,14 @@ type SessionRow = {
 
 type Message = { id: string; sender_client_id: string; content: string; created_at: string };
 
+const SUGGESTED_INTERESTS = [
+  "music", "gaming", "movies", "art", "tech",
+  "books", "travel", "memes", "anime", "sports",
+];
+
 export default function ChatApp() {
   const [stage, setStage] = useState<Stage>("home");
-  const [profile, setProfile] = useState<Profile>({
-    nickname: "",
-    gender: "unspecified",
-    country: "",
-    interests: [],
-  });
+  const [profile, setProfile] = useState<Profile>({ nickname: "", interests: [] });
   const [session, setSession] = useState<SessionRow | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [draft, setDraft] = useState("");
@@ -130,24 +118,7 @@ export default function ChatApp() {
         "postgres_changes",
         { event: "INSERT", schema: "public", table: "messages", filter: `session_id=eq.${session.id}` },
         (payload) => {
-          const incoming = payload.new as Message;
-          setMessages((m) => {
-            // if we already have it (by id), skip
-            if (m.some((x) => x.id === incoming.id)) return m;
-            // replace any optimistic local copy from the same sender with the same content
-            const idx = m.findIndex(
-              (x) =>
-                x.id.startsWith("local-") &&
-                x.sender_client_id === incoming.sender_client_id &&
-                x.content === incoming.content,
-            );
-            if (idx !== -1) {
-              const next = m.slice();
-              next[idx] = incoming;
-              return next;
-            }
-            return [...m, incoming];
-          });
+          setMessages((m) => [...m, payload.new as Message]);
         },
       )
       .subscribe();
@@ -203,8 +174,6 @@ export default function ChatApp() {
       data: {
         clientId: clientIdRef.current,
         nickname: p.nickname,
-        gender: p.gender,
-        country: p.country,
         interests: p.interests,
       },
     });
@@ -245,26 +214,9 @@ export default function ChatApp() {
     if (!session || !draft.trim()) return;
     const content = draft.trim();
     setDraft("");
-    // optimistic echo so the sender sees their own message instantly
-    const tempId = `local-${crypto.randomUUID()}`;
-    setMessages((m) => [
-      ...m,
-      {
-        id: tempId,
-        sender_client_id: clientIdRef.current,
-        content,
-        created_at: new Date().toISOString(),
-      },
-    ]);
-    try {
-      await sendMsg({
-        data: { sessionId: session.id, clientId: clientIdRef.current, content },
-      });
-    } catch {
-      // rollback on failure
-      setMessages((m) => m.filter((x) => x.id !== tempId));
-      setDraft(content);
-    }
+    await sendMsg({
+      data: { sessionId: session.id, clientId: clientIdRef.current, content },
+    }).catch(() => setDraft(content));
   }
 
   // when ended → rematch flow handled in onDecide; if other side ended, also rematch
@@ -364,14 +316,15 @@ function HomeScreen({
   onStart: (p: Profile) => void;
 }) {
   const [nickname, setNickname] = useState(initial.nickname);
-  const [gender, setGender] = useState<Gender>(initial.gender || "unspecified");
-  const [country, setCountry] = useState<string>(initial.country || "");
+  const [interests, setInterests] = useState<string[]>(initial.interests);
 
-  const valid =
-    nickname.trim().length >= 1 &&
-    nickname.trim().length <= 24 &&
-    (gender === "boy" || gender === "girl") &&
-    country.length > 0;
+  const valid = nickname.trim().length >= 1 && nickname.trim().length <= 24;
+
+  function toggleInterest(i: string) {
+    setInterests((prev) =>
+      prev.includes(i) ? prev.filter((x) => x !== i) : prev.length >= 8 ? prev : [...prev, i],
+    );
+  }
 
   return (
     <div className="w-full max-w-md animate-fade-up">
@@ -399,65 +352,33 @@ function HomeScreen({
 
         <div className="space-y-2">
           <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            Are you a boy or a girl?
+            Interests <span className="text-muted-foreground/60">(optional, max 8)</span>
           </label>
-          <div className="grid grid-cols-2 gap-2">
-            <button
-              type="button"
-              onClick={() => setGender("boy")}
-              className={
-                "h-12 rounded-xl border text-sm font-bold transition-all " +
-                (gender === "boy"
-                  ? "border-[var(--neon-cyan)] bg-[var(--neon-cyan)]/15 text-[var(--neon-cyan)] glow-pink"
-                  : "border-border bg-secondary text-muted-foreground hover:border-[var(--neon-cyan)]/50 hover:text-foreground")
-              }
-            >
-              👦 Boy
-            </button>
-            <button
-              type="button"
-              onClick={() => setGender("girl")}
-              className={
-                "h-12 rounded-xl border text-sm font-bold transition-all " +
-                (gender === "girl"
-                  ? "border-[var(--neon-pink)] bg-[var(--neon-pink)]/15 text-[var(--neon-pink)] glow-pink"
-                  : "border-border bg-secondary text-muted-foreground hover:border-[var(--neon-pink)]/50 hover:text-foreground")
-              }
-            >
-              👧 Girl
-            </button>
+          <div className="flex flex-wrap gap-2">
+            {SUGGESTED_INTERESTS.map((i) => {
+              const on = interests.includes(i);
+              return (
+                <button
+                  key={i}
+                  type="button"
+                  onClick={() => toggleInterest(i)}
+                  className={
+                    "rounded-full border px-3 py-1.5 text-xs font-medium transition-all " +
+                    (on
+                      ? "border-[var(--neon-pink)] bg-[var(--neon-pink)]/15 text-[var(--neon-pink)] glow-pink"
+                      : "border-border bg-secondary text-muted-foreground hover:border-[var(--neon-pink)]/50 hover:text-foreground")
+                  }
+                >
+                  #{i}
+                </button>
+              );
+            })}
           </div>
-        </div>
-
-        <div className="space-y-2">
-          <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            Where are you from?
-          </label>
-          <Select value={country} onValueChange={setCountry}>
-            <SelectTrigger className="h-12 bg-input/60 text-base">
-              <SelectValue placeholder="Pick your country" />
-            </SelectTrigger>
-            <SelectContent className="max-h-72">
-              {COUNTRIES.map((c) => (
-                <SelectItem key={c.code} value={c.code}>
-                  <span className="mr-2">{c.flag}</span>
-                  {c.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
         </div>
 
         <Button
           disabled={!valid}
-          onClick={() =>
-            onStart({
-              nickname: nickname.trim(),
-              gender,
-              country,
-              interests: [],
-            })
-          }
+          onClick={() => onStart({ nickname: nickname.trim(), interests })}
           className="h-14 w-full bg-[var(--gradient-accent)] text-base font-bold text-background hover:opacity-90 glow-pink"
         >
           <Sparkles className="mr-2 h-5 w-5" />

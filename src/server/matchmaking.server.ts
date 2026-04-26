@@ -11,13 +11,9 @@ export type MatchSession = {
   user_a_client_id: string;
   user_a_nickname: string;
   user_a_interests: string[];
-  user_a_gender: string;
-  user_a_country: string;
   user_b_client_id: string;
   user_b_nickname: string;
   user_b_interests: string[];
-  user_b_gender: string;
-  user_b_country: string;
   user_a_decision: "pending" | "accept" | "skip";
   user_b_decision: "pending" | "accept" | "skip";
   status: "deciding" | "chatting" | "ended";
@@ -52,8 +48,6 @@ export async function clearUserState(clientId: string, reason: string) {
 export async function joinQueueAndTryMatch(
   clientId: string,
   nickname: string,
-  gender: string,
-  country: string,
   interests: string[],
 ): Promise<{ session: MatchSession | null }> {
   // Clean up any prior state first
@@ -84,13 +78,9 @@ export async function joinQueueAndTryMatch(
           user_a_client_id: partner.client_id,
           user_a_nickname: partner.nickname,
           user_a_interests: partner.interests,
-          user_a_gender: partner.gender,
-          user_a_country: partner.country,
           user_b_client_id: clientId,
           user_b_nickname: nickname,
           user_b_interests: interests,
-          user_b_gender: gender,
-          user_b_country: country,
           decide_deadline: deadline,
         })
         .select()
@@ -103,7 +93,7 @@ export async function joinQueueAndTryMatch(
   // Otherwise, add self to queue
   await supabaseAdmin
     .from("queue")
-    .insert({ client_id: clientId, nickname, interests, gender, country });
+    .insert({ client_id: clientId, nickname, interests });
   return { session: null };
 }
 
