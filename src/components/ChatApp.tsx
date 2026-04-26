@@ -228,9 +228,26 @@ export default function ChatApp() {
     if (!session || !draft.trim()) return;
     const content = draft.trim();
     setDraft("");
-    await sendMsg({
-      data: { sessionId: session.id, clientId: clientIdRef.current, content },
-    }).catch(() => setDraft(content));
+    // optimistic echo so the sender sees their own message instantly
+    const tempId = `local-${crypto.randomUUID()}`;
+    setMessages((m) => [
+      ...m,
+      {
+        id: tempId,
+        sender_client_id: clientIdRef.current,
+        content,
+        created_at: new Date().toISOString(),
+      },
+    ]);
+    try {
+      await sendMsg({
+        data: { sessionId: session.id, clientId: clientIdRef.current, content },
+      });
+    } catch {
+      // rollback on failure
+      setMessages((m) => m.filter((x) => x.id !== tempId));
+      setDraft(content);
+    }
   }
 
   // when ended → rematch flow handled in onDecide; if other side ended, also rematch
