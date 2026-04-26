@@ -556,6 +556,18 @@ function DecisionScreen({
   const remaining = Math.ceil(remainingMs / 1000);
   const fraction = remainingMs / (DECIDE_SECONDS * 1000);
 
+  // When local timer hits 0, auto-skip if not already decided.
+  // Server enforce will also clean up; this ensures fast UX even on slow networks.
+  const firedRef = useRef<string>("");
+  useEffect(() => {
+    if (remainingMs > 0) return;
+    if (firedRef.current === session.id) return;
+    if (myDecision === "pending") {
+      firedRef.current = session.id;
+      onDecide("skip");
+    }
+  }, [remainingMs, myDecision, session.id, onDecide]);
+
   const accepted = myDecision === "accept";
 
   return (
