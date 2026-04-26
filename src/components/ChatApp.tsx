@@ -347,15 +347,14 @@ function HomeScreen({
   onStart: (p: Profile) => void;
 }) {
   const [nickname, setNickname] = useState(initial.nickname);
-  const [interests, setInterests] = useState<string[]>(initial.interests);
+  const [gender, setGender] = useState<Gender>(initial.gender || "unspecified");
+  const [country, setCountry] = useState<string>(initial.country || "");
 
-  const valid = nickname.trim().length >= 1 && nickname.trim().length <= 24;
-
-  function toggleInterest(i: string) {
-    setInterests((prev) =>
-      prev.includes(i) ? prev.filter((x) => x !== i) : prev.length >= 8 ? prev : [...prev, i],
-    );
-  }
+  const valid =
+    nickname.trim().length >= 1 &&
+    nickname.trim().length <= 24 &&
+    (gender === "boy" || gender === "girl") &&
+    country.length > 0;
 
   return (
     <div className="w-full max-w-md animate-fade-up">
@@ -383,33 +382,65 @@ function HomeScreen({
 
         <div className="space-y-2">
           <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            Interests <span className="text-muted-foreground/60">(optional, max 8)</span>
+            Are you a boy or a girl?
           </label>
-          <div className="flex flex-wrap gap-2">
-            {SUGGESTED_INTERESTS.map((i) => {
-              const on = interests.includes(i);
-              return (
-                <button
-                  key={i}
-                  type="button"
-                  onClick={() => toggleInterest(i)}
-                  className={
-                    "rounded-full border px-3 py-1.5 text-xs font-medium transition-all " +
-                    (on
-                      ? "border-[var(--neon-pink)] bg-[var(--neon-pink)]/15 text-[var(--neon-pink)] glow-pink"
-                      : "border-border bg-secondary text-muted-foreground hover:border-[var(--neon-pink)]/50 hover:text-foreground")
-                  }
-                >
-                  #{i}
-                </button>
-              );
-            })}
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={() => setGender("boy")}
+              className={
+                "h-12 rounded-xl border text-sm font-bold transition-all " +
+                (gender === "boy"
+                  ? "border-[var(--neon-cyan)] bg-[var(--neon-cyan)]/15 text-[var(--neon-cyan)] glow-pink"
+                  : "border-border bg-secondary text-muted-foreground hover:border-[var(--neon-cyan)]/50 hover:text-foreground")
+              }
+            >
+              👦 Boy
+            </button>
+            <button
+              type="button"
+              onClick={() => setGender("girl")}
+              className={
+                "h-12 rounded-xl border text-sm font-bold transition-all " +
+                (gender === "girl"
+                  ? "border-[var(--neon-pink)] bg-[var(--neon-pink)]/15 text-[var(--neon-pink)] glow-pink"
+                  : "border-border bg-secondary text-muted-foreground hover:border-[var(--neon-pink)]/50 hover:text-foreground")
+              }
+            >
+              👧 Girl
+            </button>
           </div>
+        </div>
+
+        <div className="space-y-2">
+          <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            Where are you from?
+          </label>
+          <Select value={country} onValueChange={setCountry}>
+            <SelectTrigger className="h-12 bg-input/60 text-base">
+              <SelectValue placeholder="Pick your country" />
+            </SelectTrigger>
+            <SelectContent className="max-h-72">
+              {COUNTRIES.map((c) => (
+                <SelectItem key={c.code} value={c.code}>
+                  <span className="mr-2">{c.flag}</span>
+                  {c.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
 
         <Button
           disabled={!valid}
-          onClick={() => onStart({ nickname: nickname.trim(), interests })}
+          onClick={() =>
+            onStart({
+              nickname: nickname.trim(),
+              gender,
+              country,
+              interests: [],
+            })
+          }
           className="h-14 w-full bg-[var(--gradient-accent)] text-base font-bold text-background hover:opacity-90 glow-pink"
         >
           <Sparkles className="mr-2 h-5 w-5" />
