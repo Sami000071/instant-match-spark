@@ -202,6 +202,8 @@ export default function ChatApp() {
         clientId: clientIdRef.current,
         nickname: p.nickname,
         interests: p.interests,
+        gender: p.gender,
+        country: p.country,
       },
     });
     if (res.session) {
