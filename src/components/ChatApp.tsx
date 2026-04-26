@@ -255,10 +255,21 @@ export default function ChatApp() {
   async function onSend() {
     if (!session || !draft.trim()) return;
     const content = draft.trim();
+    const cid = clientIdRef.current;
+    const tempId = `temp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
     setDraft("");
-    await sendMsg({
-      data: { sessionId: session.id, clientId: clientIdRef.current, content },
-    }).catch(() => setDraft(content));
+    // Optimistically show our own message immediately
+    setMessages((m) => [
+      ...m,
+      { id: tempId, sender_client_id: cid, content, created_at: new Date().toISOString() },
+    ]);
+    try {
+      await sendMsg({ data: { sessionId: session.id, clientId: cid, content } });
+    } catch {
+      // rollback on failure
+      setMessages((m) => m.filter((x) => x.id !== tempId));
+      setDraft(content);
+    }
   }
 
   // when ended → rematch flow handled in onDecide; if other side ended, also rematch
