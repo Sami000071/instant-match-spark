@@ -186,6 +186,8 @@ export default function ChatApp() {
       data: {
         clientId: clientIdRef.current,
         nickname: p.nickname,
+        gender: p.gender,
+        country: p.country,
         interests: p.interests,
       },
     });
