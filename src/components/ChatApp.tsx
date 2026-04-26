@@ -145,7 +145,20 @@ export default function ChatApp() {
         "postgres_changes",
         { event: "INSERT", schema: "public", table: "messages", filter: `session_id=eq.${session.id}` },
         (payload) => {
-          setMessages((m) => [...m, payload.new as Message]);
+          const incoming = payload.new as Message;
+          setMessages((m) => {
+            // Dedupe: replace any optimistic temp message from same sender with same content
+            const withoutTemp = m.filter(
+              (x) =>
+                !(
+                  x.id.startsWith("temp-") &&
+                  x.sender_client_id === incoming.sender_client_id &&
+                  x.content === incoming.content
+                ),
+            );
+            if (withoutTemp.some((x) => x.id === incoming.id)) return withoutTemp;
+            return [...withoutTemp, incoming];
+          });
         },
       )
       .subscribe();
