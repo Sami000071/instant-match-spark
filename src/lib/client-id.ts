@@ -13,27 +13,14 @@ export function getClientId(): string {
 
 const PROFILE_KEY = "blink_chat_profile";
 
-export type Gender = "male" | "female" | "unspecified";
-
-export type Profile = {
-  nickname: string;
-  interests: string[];
-  gender: Gender;
-  country: string; // ISO code, "" if unset
-};
+export type Profile = { nickname: string; interests: string[] };
 
 export function loadProfile(): Profile | null {
   if (typeof window === "undefined") return null;
   const raw = localStorage.getItem(PROFILE_KEY);
   if (!raw) return null;
   try {
-    const p = JSON.parse(raw) as Partial<Profile>;
-    return {
-      nickname: p.nickname ?? "",
-      interests: Array.isArray(p.interests) ? p.interests : [],
-      gender: (p.gender as Gender) ?? "unspecified",
-      country: p.country ?? "",
-    };
+    return JSON.parse(raw) as Profile;
   } catch {
     return null;
   }

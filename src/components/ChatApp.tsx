@@ -1,14 +1,7 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
-import {
-  getClientId,
-  loadProfile,
-  saveProfile,
-  type Gender,
-  type Profile,
-} from "@/lib/client-id";
-import { COUNTRIES, getCountry } from "@/lib/countries";
+import { getClientId, loadProfile, saveProfile, type Profile } from "@/lib/client-id";
 import {
   decideFn,
   enforceTimeoutFn,
@@ -20,15 +13,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 
-import { Sparkles, Send, X, Check, LogOut, Zap, Mars, Venus } from "lucide-react";
+import { Sparkles, Send, X, Check, LogOut, Zap } from "lucide-react";
 
 type Stage = "home" | "matching" | "deciding" | "chatting" | "ended";
 
@@ -37,13 +23,9 @@ type SessionRow = {
   user_a_client_id: string;
   user_a_nickname: string;
   user_a_interests: string[];
-  user_a_gender: Gender;
-  user_a_country: string;
   user_b_client_id: string;
   user_b_nickname: string;
   user_b_interests: string[];
-  user_b_gender: Gender;
-  user_b_country: string;
   user_a_decision: "pending" | "accept" | "skip";
   user_b_decision: "pending" | "accept" | "skip";
   status: "deciding" | "chatting" | "ended";
@@ -59,18 +41,9 @@ const SUGGESTED_INTERESTS = [
   "books", "travel", "memes", "anime", "sports",
 ];
 
-const DECIDE_SECONDS = 5;
-
-const EMPTY_PROFILE: Profile = {
-  nickname: "",
-  interests: [],
-  gender: "unspecified",
-  country: "",
-};
-
 export default function ChatApp() {
   const [stage, setStage] = useState<Stage>("home");
-  const [profile, setProfile] = useState<Profile>(EMPTY_PROFILE);
+  const [profile, setProfile] = useState<Profile>({ nickname: "", interests: [] });
   const [session, setSession] = useState<SessionRow | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [draft, setDraft] = useState("");
@@ -344,14 +317,8 @@ function HomeScreen({
 }) {
   const [nickname, setNickname] = useState(initial.nickname);
   const [interests, setInterests] = useState<string[]>(initial.interests);
-  const [gender, setGender] = useState<Gender>(initial.gender);
-  const [country, setCountry] = useState<string>(initial.country);
 
-  const valid =
-    nickname.trim().length >= 1 &&
-    nickname.trim().length <= 24 &&
-    gender !== "unspecified" &&
-    country.length > 0;
+  const valid = nickname.trim().length >= 1 && nickname.trim().length <= 24;
 
   function toggleInterest(i: string) {
     setInterests((prev) =>
@@ -385,59 +352,6 @@ function HomeScreen({
 
         <div className="space-y-2">
           <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            I am
-          </label>
-          <div className="grid grid-cols-2 gap-2">
-            <button
-              type="button"
-              onClick={() => setGender("male")}
-              className={
-                "flex h-12 items-center justify-center gap-2 rounded-md border text-sm font-bold transition-all " +
-                (gender === "male"
-                  ? "border-[var(--neon-cyan)] bg-[var(--neon-cyan)]/15 text-[var(--neon-cyan)] glow-cyan"
-                  : "border-border bg-secondary text-muted-foreground hover:border-[var(--neon-cyan)]/50 hover:text-foreground")
-              }
-            >
-              <Mars className="h-4 w-4" />
-              Boy
-            </button>
-            <button
-              type="button"
-              onClick={() => setGender("female")}
-              className={
-                "flex h-12 items-center justify-center gap-2 rounded-md border text-sm font-bold transition-all " +
-                (gender === "female"
-                  ? "border-[var(--neon-pink)] bg-[var(--neon-pink)]/15 text-[var(--neon-pink)] glow-pink"
-                  : "border-border bg-secondary text-muted-foreground hover:border-[var(--neon-pink)]/50 hover:text-foreground")
-              }
-            >
-              <Venus className="h-4 w-4" />
-              Girl
-            </button>
-          </div>
-        </div>
-
-        <div className="space-y-2">
-          <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            Where are you from
-          </label>
-          <Select value={country || undefined} onValueChange={setCountry}>
-            <SelectTrigger className="h-12 bg-input/60 text-base">
-              <SelectValue placeholder="Select your country" />
-            </SelectTrigger>
-            <SelectContent className="max-h-72">
-              {COUNTRIES.map((c) => (
-                <SelectItem key={c.code} value={c.code}>
-                  <span className="mr-2">{c.flag}</span>
-                  {c.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        <div className="space-y-2">
-          <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
             Interests <span className="text-muted-foreground/60">(optional, max 8)</span>
           </label>
           <div className="flex flex-wrap gap-2">
@@ -464,9 +378,7 @@ function HomeScreen({
 
         <Button
           disabled={!valid}
-          onClick={() =>
-            onStart({ nickname: nickname.trim(), interests, gender, country })
-          }
+          onClick={() => onStart({ nickname: nickname.trim(), interests })}
           className="h-14 w-full bg-[var(--gradient-accent)] text-base font-bold text-background hover:opacity-90 glow-pink"
         >
           <Sparkles className="mr-2 h-5 w-5" />
@@ -515,20 +427,18 @@ function DecisionScreen({
   const myDecision = isA ? session.user_a_decision : session.user_b_decision;
   const otherNick = isA ? session.user_b_nickname : session.user_a_nickname;
   const otherInterests = isA ? session.user_b_interests : session.user_a_interests;
-  const otherGender = isA ? session.user_b_gender : session.user_a_gender;
-  const otherCountry = isA ? session.user_b_country : session.user_a_country;
-  const countryInfo = useMemo(() => getCountry(otherCountry), [otherCountry]);
 
-  // Local-elapsed countdown — immune to clock skew between client and server.
-  // Reset whenever a new session starts.
-  const startRef = useRef<{ id: string; t0: number }>({ id: "", t0: 0 });
-  if (startRef.current.id !== session.id) {
-    startRef.current = { id: session.id, t0: Date.now() };
-  }
-  const elapsedMs = Math.max(0, now - startRef.current.t0);
-  const remainingMs = Math.max(0, DECIDE_SECONDS * 1000 - elapsedMs);
-  const remaining = Math.ceil(remainingMs / 1000);
-  const fraction = remainingMs / (DECIDE_SECONDS * 1000);
+  const remaining = Math.max(
+    0,
+    Math.ceil((new Date(session.decide_deadline).getTime() - now) / 1000),
+  );
+  const fraction = Math.max(
+    0,
+    Math.min(
+      1,
+      (new Date(session.decide_deadline).getTime() - now) / 5000,
+    ),
+  );
 
   const accepted = myDecision === "accept";
 
@@ -549,25 +459,6 @@ function DecisionScreen({
             <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
               wants to chat
             </p>
-          </div>
-
-          <div className="flex flex-wrap items-center justify-center gap-2">
-            {otherGender === "male" && (
-              <span className="inline-flex items-center gap-1 rounded-full border border-[var(--neon-cyan)]/40 bg-[var(--neon-cyan)]/10 px-2.5 py-1 text-xs font-semibold text-[var(--neon-cyan)]">
-                <Mars className="h-3 w-3" /> Boy
-              </span>
-            )}
-            {otherGender === "female" && (
-              <span className="inline-flex items-center gap-1 rounded-full border border-[var(--neon-pink)]/40 bg-[var(--neon-pink)]/10 px-2.5 py-1 text-xs font-semibold text-[var(--neon-pink)]">
-                <Venus className="h-3 w-3" /> Girl
-              </span>
-            )}
-            {countryInfo && (
-              <span className="inline-flex items-center gap-1 rounded-full border border-border bg-secondary px-2.5 py-1 text-xs font-semibold text-foreground">
-                <span>{countryInfo.flag}</span>
-                {countryInfo.name}
-              </span>
-            )}
           </div>
 
           {otherInterests.length > 0 && (
