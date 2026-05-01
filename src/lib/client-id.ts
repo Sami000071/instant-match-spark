@@ -11,16 +11,34 @@ export function getClientId(): string {
   return id;
 }
 
-const PROFILE_KEY = "blink_chat_profile";
+const PROFILE_KEY = "blink_chat_profile_v2";
 
-export type Profile = { nickname: string; interests: string[] };
+export type Profile = {
+  nickname: string;
+  country: string;
+  gender: "male" | "female" | "nonbinary" | "unspecified";
+  avatarUrl: string;
+};
+
+export const EMPTY_PROFILE: Profile = {
+  nickname: "",
+  country: "",
+  gender: "unspecified",
+  avatarUrl: "",
+};
 
 export function loadProfile(): Profile | null {
   if (typeof window === "undefined") return null;
   const raw = localStorage.getItem(PROFILE_KEY);
   if (!raw) return null;
   try {
-    return JSON.parse(raw) as Profile;
+    const p = JSON.parse(raw) as Partial<Profile>;
+    return {
+      nickname: p.nickname ?? "",
+      country: p.country ?? "",
+      gender: (p.gender as Profile["gender"]) ?? "unspecified",
+      avatarUrl: p.avatarUrl ?? "",
+    };
   } catch {
     return null;
   }
