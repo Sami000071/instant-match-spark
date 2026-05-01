@@ -14,6 +14,27 @@ export type Database = {
   }
   public: {
     Tables: {
+      blocks: {
+        Row: {
+          blocked_client_id: string
+          blocker_client_id: string
+          created_at: string
+          id: string
+        }
+        Insert: {
+          blocked_client_id: string
+          blocker_client_id: string
+          created_at?: string
+          id?: string
+        }
+        Update: {
+          blocked_client_id?: string
+          blocker_client_id?: string
+          created_at?: string
+          id?: string
+        }
+        Relationships: []
+      }
       match_sessions: {
         Row: {
           created_at: string
@@ -22,17 +43,17 @@ export type Database = {
           id: string
           left_by: string | null
           status: Database["public"]["Enums"]["session_status"]
+          user_a_avatar_url: string
           user_a_client_id: string
           user_a_country: string
           user_a_decision: Database["public"]["Enums"]["decision"]
           user_a_gender: string
-          user_a_interests: string[]
           user_a_nickname: string
+          user_b_avatar_url: string
           user_b_client_id: string
           user_b_country: string
           user_b_decision: Database["public"]["Enums"]["decision"]
           user_b_gender: string
-          user_b_interests: string[]
           user_b_nickname: string
         }
         Insert: {
@@ -42,17 +63,17 @@ export type Database = {
           id?: string
           left_by?: string | null
           status?: Database["public"]["Enums"]["session_status"]
+          user_a_avatar_url?: string
           user_a_client_id: string
           user_a_country?: string
           user_a_decision?: Database["public"]["Enums"]["decision"]
           user_a_gender?: string
-          user_a_interests?: string[]
           user_a_nickname: string
+          user_b_avatar_url?: string
           user_b_client_id: string
           user_b_country?: string
           user_b_decision?: Database["public"]["Enums"]["decision"]
           user_b_gender?: string
-          user_b_interests?: string[]
           user_b_nickname: string
         }
         Update: {
@@ -62,17 +83,17 @@ export type Database = {
           id?: string
           left_by?: string | null
           status?: Database["public"]["Enums"]["session_status"]
+          user_a_avatar_url?: string
           user_a_client_id?: string
           user_a_country?: string
           user_a_decision?: Database["public"]["Enums"]["decision"]
           user_a_gender?: string
-          user_a_interests?: string[]
           user_a_nickname?: string
+          user_b_avatar_url?: string
           user_b_client_id?: string
           user_b_country?: string
           user_b_decision?: Database["public"]["Enums"]["decision"]
           user_b_gender?: string
-          user_b_interests?: string[]
           user_b_nickname?: string
         }
         Relationships: []
@@ -111,31 +132,61 @@ export type Database = {
       }
       queue: {
         Row: {
+          avatar_url: string
           client_id: string
           country: string
           created_at: string
           gender: string
           id: string
-          interests: string[]
           nickname: string
         }
         Insert: {
+          avatar_url?: string
           client_id: string
           country?: string
           created_at?: string
           gender?: string
           id?: string
-          interests?: string[]
           nickname: string
         }
         Update: {
+          avatar_url?: string
           client_id?: string
           country?: string
           created_at?: string
           gender?: string
           id?: string
-          interests?: string[]
           nickname?: string
+        }
+        Relationships: []
+      }
+      reports: {
+        Row: {
+          created_at: string
+          details: string
+          id: string
+          reason: string
+          reported_client_id: string
+          reporter_client_id: string
+          session_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          details?: string
+          id?: string
+          reason?: string
+          reported_client_id: string
+          reporter_client_id: string
+          session_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          details?: string
+          id?: string
+          reason?: string
+          reported_client_id?: string
+          reporter_client_id?: string
+          session_id?: string | null
         }
         Relationships: []
       }
