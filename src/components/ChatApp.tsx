@@ -856,7 +856,7 @@ function ChatScreen({
                 className={
                   "max-w-[80%] rounded-2xl px-3.5 py-2 text-sm leading-snug " +
                   (mine
-                    ? "ml-auto rounded-br-sm bg-[var(--gradient-accent)] text-background"
+                    ? "ml-auto rounded-br-sm bg-[var(--gradient-accent)] text-white font-medium drop-shadow-sm"
                     : "mr-auto rounded-bl-sm bg-secondary text-foreground")
                 }
               >
