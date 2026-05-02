@@ -54,6 +54,7 @@ import {
   SkipForward,
   Camera,
   Loader2,
+  Smile,
 } from "lucide-react";
 
 type Stage = "home" | "matching" | "deciding" | "chatting" | "ended";
@@ -89,6 +90,8 @@ const REPORT_REASONS = [
   "Other",
 ];
 
+const CHAT_EMOJIS = ["😀", "😂", "😍", "😎", "😭", "😡", "👍", "👎", "❤️", "🔥", "✨", "🎉", "👋", "🙏"];
+
 export default function ChatApp() {
   const [stage, setStage] = useState<Stage>("home");
   const [profile, setProfile] = useState<Profile>(EMPTY_PROFILE);
@@ -102,6 +105,7 @@ export default function ChatApp() {
   const clientIdRef = useRef<string>("");
   const typingChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const lastTypingSentRef = useRef<number>(0);
+  const rematchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const join = useServerFn(joinQueueFn);
   const decide = useServerFn(decideFn);
@@ -156,6 +160,38 @@ export default function ChatApp() {
       supabase.removeChannel(channel);
     };
   }, [stage]);
+
+  // If only two people are online and both re-queue at the same time, keep
+  // retrying with a small jitter so normal skips/timeouts can rematch forever.
+  useEffect(() => {
+    if (stage !== "matching") return;
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+
+    const poll = async () => {
+      if (cancelled) return;
+      try {
+        const res = await join({
+          data: { clientId: clientIdRef.current, profile },
+        });
+        if (cancelled) return;
+        if (res.session) {
+          setSession(res.session as SessionRow);
+          setStage(res.session.status === "chatting" ? "chatting" : "deciding");
+          return;
+        }
+      } catch {
+        // keep waiting
+      }
+      timer = setTimeout(poll, 900 + Math.random() * 700);
+    };
+
+    timer = setTimeout(poll, 900 + Math.random() * 700);
+    return () => {
+      cancelled = true;
+      if (timer) clearTimeout(timer);
+    };
+  }, [stage, profile, join]);
 
   // realtime: subscribe to session updates while deciding/chatting
   useEffect(() => {
@@ -250,8 +286,13 @@ export default function ChatApp() {
   }, [stage, leaveQ]);
 
   async function startMatching(p: Profile) {
+    if (rematchTimerRef.current) {
+      clearTimeout(rematchTimerRef.current);
+      rematchTimerRef.current = null;
+    }
     saveProfile(p);
     setProfile(p);
+    setSession(null);
     setMessages([]);
     setEndedReason(null);
     setPartnerTyping(false);
@@ -277,7 +318,7 @@ export default function ChatApp() {
     if (updated.status === "chatting") setStage("chatting");
     if (updated.status === "ended") {
       setEndedReason(reasonText(updated as SessionRow, clientIdRef.current));
-      setTimeout(() => startMatching(profile), 350);
+      setStage("ended");
     }
   }
 
@@ -362,8 +403,13 @@ export default function ChatApp() {
   // when ended → auto-rematch
   useEffect(() => {
     if (stage !== "ended") return;
-    const t = setTimeout(() => startMatching(profile), 600);
-    return () => clearTimeout(t);
+    rematchTimerRef.current = setTimeout(() => startMatching(profile), 600);
+    return () => {
+      if (rematchTimerRef.current) {
+        clearTimeout(rematchTimerRef.current);
+        rematchTimerRef.current = null;
+      }
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stage]);
 
@@ -791,6 +837,7 @@ function ChatScreen({
   const otherAvatar = isA ? session.user_b_avatar_url : session.user_a_avatar_url;
   const otherCountry = isA ? session.user_b_country : session.user_a_country;
   const country = useMemo(() => findCountry(otherCountry), [otherCountry]);
+  const [emojiOpen, setEmojiOpen] = useState(false);
 
   const scrollRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -889,7 +936,36 @@ function ChatScreen({
         </div>
       </div>
 
-      <div className="flex items-center gap-2 border-t border-border p-3">
+      <div className="relative flex items-center gap-2 border-t border-border p-3">
+        {emojiOpen && (
+          <div className="absolute bottom-[4.25rem] left-3 grid grid-cols-7 gap-1 rounded-xl border border-border bg-popover p-2 shadow-2xl">
+            {CHAT_EMOJIS.map((emoji) => (
+              <button
+                key={emoji}
+                type="button"
+                onClick={() => {
+                  setDraft(`${draft}${emoji}`);
+                  setEmojiOpen(false);
+                  onTyping();
+                }}
+                className="flex h-8 w-8 items-center justify-center rounded-lg text-lg hover:bg-secondary"
+                aria-label={`Add ${emoji}`}
+              >
+                {emoji}
+              </button>
+            ))}
+          </div>
+        )}
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          onClick={() => setEmojiOpen((open) => !open)}
+          className="h-11 w-11 shrink-0 text-muted-foreground hover:text-[var(--neon-pink)]"
+          title="Emoji"
+        >
+          <Smile className="h-5 w-5" />
+        </Button>
         <Input
           value={draft}
           onChange={(e) => {
