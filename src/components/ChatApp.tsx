@@ -54,6 +54,7 @@ import {
   SkipForward,
   Camera,
   Loader2,
+  Smile,
 } from "lucide-react";
 
 type Stage = "home" | "matching" | "deciding" | "chatting" | "ended";
@@ -89,6 +90,8 @@ const REPORT_REASONS = [
   "Other",
 ];
 
+const CHAT_EMOJIS = ["😀", "😂", "😍", "😎", "😭", "😡", "👍", "👎", "❤️", "🔥", "✨", "🎉", "👋", "🙏"];
+
 export default function ChatApp() {
   const [stage, setStage] = useState<Stage>("home");
   const [profile, setProfile] = useState<Profile>(EMPTY_PROFILE);
@@ -102,6 +105,7 @@ export default function ChatApp() {
   const clientIdRef = useRef<string>("");
   const typingChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const lastTypingSentRef = useRef<number>(0);
+  const rematchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const join = useServerFn(joinQueueFn);
   const decide = useServerFn(decideFn);
@@ -156,6 +160,38 @@ export default function ChatApp() {
       supabase.removeChannel(channel);
     };
   }, [stage]);
+
+  // If only two people are online and both re-queue at the same time, keep
+  // retrying with a small jitter so normal skips/timeouts can rematch forever.
+  useEffect(() => {
+    if (stage !== "matching") return;
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+
+    const poll = async () => {
+      if (cancelled) return;
+      try {
+        const res = await join({
+          data: { clientId: clientIdRef.current, profile },
+        });
+        if (cancelled) return;
+        if (res.session) {
+          setSession(res.session as SessionRow);
+          setStage(res.session.status === "chatting" ? "chatting" : "deciding");
+          return;
+        }
+      } catch {
+        // keep waiting
+      }
+      timer = setTimeout(poll, 900 + Math.random() * 700);
+    };
+
+    timer = setTimeout(poll, 900 + Math.random() * 700);
+    return () => {
+      cancelled = true;
+      if (timer) clearTimeout(timer);
+    };
+  }, [stage, profile, join]);
 
   // realtime: subscribe to session updates while deciding/chatting
   useEffect(() => {
