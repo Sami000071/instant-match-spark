@@ -286,8 +286,13 @@ export default function ChatApp() {
   }, [stage, leaveQ]);
 
   async function startMatching(p: Profile) {
+    if (rematchTimerRef.current) {
+      clearTimeout(rematchTimerRef.current);
+      rematchTimerRef.current = null;
+    }
     saveProfile(p);
     setProfile(p);
+    setSession(null);
     setMessages([]);
     setEndedReason(null);
     setPartnerTyping(false);
@@ -313,7 +318,7 @@ export default function ChatApp() {
     if (updated.status === "chatting") setStage("chatting");
     if (updated.status === "ended") {
       setEndedReason(reasonText(updated as SessionRow, clientIdRef.current));
-      setTimeout(() => startMatching(profile), 350);
+      setStage("ended");
     }
   }
 
@@ -398,8 +403,13 @@ export default function ChatApp() {
   // when ended → auto-rematch
   useEffect(() => {
     if (stage !== "ended") return;
-    const t = setTimeout(() => startMatching(profile), 600);
-    return () => clearTimeout(t);
+    rematchTimerRef.current = setTimeout(() => startMatching(profile), 600);
+    return () => {
+      if (rematchTimerRef.current) {
+        clearTimeout(rematchTimerRef.current);
+        rematchTimerRef.current = null;
+      }
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stage]);
 
