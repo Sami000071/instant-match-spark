@@ -660,16 +660,24 @@ function DecisionScreen({
   const otherGender = isA ? session.user_b_gender : session.user_a_gender;
   const otherAvatar = isA ? session.user_b_avatar_url : session.user_a_avatar_url;
 
-  const remaining = Math.max(
-    0,
-    Math.ceil((new Date(session.decide_deadline).getTime() - now) / 1000),
-  );
-  const fraction = Math.max(
-    0,
-    Math.min(1, (new Date(session.decide_deadline).getTime() - now) / 5000),
-  );
+  const deadlineMs = new Date(session.decide_deadline).getTime();
+  const msLeft = Math.max(0, deadlineMs - now);
+  const remaining = Math.ceil(msLeft / 1000);
+  const fraction = Math.max(0, Math.min(1, msLeft / 5000));
 
   const accepted = myDecision === "accept";
+
+  // Client-side fallback: if timer hits 0 and we haven't decided, auto-skip.
+  const autoSkippedRef = useRef(false);
+  useEffect(() => {
+    if (msLeft <= 0 && myDecision === "pending" && !autoSkippedRef.current) {
+      autoSkippedRef.current = true;
+      onDecide("skip");
+    }
+  }, [msLeft, myDecision, onDecide]);
+  useEffect(() => {
+    autoSkippedRef.current = false;
+  }, [session.id]);
   const country = findCountry(otherCountry);
 
   return (
