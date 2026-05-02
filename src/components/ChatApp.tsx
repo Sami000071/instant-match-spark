@@ -837,6 +837,7 @@ function ChatScreen({
   const otherAvatar = isA ? session.user_b_avatar_url : session.user_a_avatar_url;
   const otherCountry = isA ? session.user_b_country : session.user_a_country;
   const country = useMemo(() => findCountry(otherCountry), [otherCountry]);
+  const [emojiOpen, setEmojiOpen] = useState(false);
 
   const scrollRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -935,7 +936,36 @@ function ChatScreen({
         </div>
       </div>
 
-      <div className="flex items-center gap-2 border-t border-border p-3">
+      <div className="relative flex items-center gap-2 border-t border-border p-3">
+        {emojiOpen && (
+          <div className="absolute bottom-[4.25rem] left-3 grid grid-cols-7 gap-1 rounded-xl border border-border bg-popover p-2 shadow-2xl">
+            {CHAT_EMOJIS.map((emoji) => (
+              <button
+                key={emoji}
+                type="button"
+                onClick={() => {
+                  setDraft(`${draft}${emoji}`);
+                  setEmojiOpen(false);
+                  onTyping();
+                }}
+                className="flex h-8 w-8 items-center justify-center rounded-lg text-lg hover:bg-secondary"
+                aria-label={`Add ${emoji}`}
+              >
+                {emoji}
+              </button>
+            ))}
+          </div>
+        )}
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          onClick={() => setEmojiOpen((open) => !open)}
+          className="h-11 w-11 shrink-0 text-muted-foreground hover:text-[var(--neon-pink)]"
+          title="Emoji"
+        >
+          <Smile className="h-5 w-5" />
+        </Button>
         <Input
           value={draft}
           onChange={(e) => {
