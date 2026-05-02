@@ -660,24 +660,39 @@ function DecisionScreen({
   const otherGender = isA ? session.user_b_gender : session.user_a_gender;
   const otherAvatar = isA ? session.user_b_avatar_url : session.user_a_avatar_url;
 
-  const deadlineMs = new Date(session.decide_deadline).getTime();
-  const msLeft = Math.max(0, deadlineMs - now);
+  // Anchor countdown to the client's clock the first time we see this session,
+  // so server/client clock skew or late realtime delivery can't make it skip
+  // instantly. Always give the user a fresh 5 seconds from when they see it.
+  const DECIDE_MS = 5000;
+  const localStartRef = useRef<{ id: string; start: number } | null>(null);
+  if (!localStartRef.current || localStartRef.current.id !== session.id) {
+    localStartRef.current = { id: session.id, start: Date.now() };
+  }
+  const localDeadline = localStartRef.current.start + DECIDE_MS;
+  const msLeft = Math.max(0, localDeadline - now);
   const remaining = Math.ceil(msLeft / 1000);
-  const fraction = Math.max(0, Math.min(1, msLeft / 5000));
+  const fraction = Math.max(0, Math.min(1, msLeft / DECIDE_MS));
 
   const accepted = myDecision === "accept";
 
   // Client-side fallback: if timer hits 0 and we haven't decided, auto-skip.
+  // Guard with a small grace period so it can't fire on the first render.
   const autoSkippedRef = useRef(false);
   useEffect(() => {
-    if (msLeft <= 0 && myDecision === "pending" && !autoSkippedRef.current) {
+    autoSkippedRef.current = false;
+  }, [session.id]);
+  useEffect(() => {
+    const elapsed = Date.now() - (localStartRef.current?.start ?? Date.now());
+    if (
+      msLeft <= 0 &&
+      elapsed >= DECIDE_MS - 50 &&
+      myDecision === "pending" &&
+      !autoSkippedRef.current
+    ) {
       autoSkippedRef.current = true;
       onDecide("skip");
     }
   }, [msLeft, myDecision, onDecide]);
-  useEffect(() => {
-    autoSkippedRef.current = false;
-  }, [session.id]);
   const country = findCountry(otherCountry);
 
   return (
