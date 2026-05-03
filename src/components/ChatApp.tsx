@@ -1020,6 +1020,8 @@ function ChatScreen({
   onReport,
   onBlock,
   partnerTyping,
+  onAddFriend,
+  friendStatus,
 }: {
   session: SessionRow;
   clientId: string;
@@ -1033,6 +1035,8 @@ function ChatScreen({
   onReport: () => void;
   onBlock: () => void;
   partnerTyping: boolean;
+  onAddFriend: () => void;
+  friendStatus: "idle" | "pending" | "mutual";
 }) {
   const isA = session.user_a_client_id === clientId;
   const otherNick = isA ? session.user_b_nickname : session.user_a_nickname;
