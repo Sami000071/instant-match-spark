@@ -146,7 +146,11 @@ export default function ChatApp() {
   useEffect(() => {
     clientIdRef.current = getClientId();
     const p = loadProfile();
-    if (p) setProfile(p);
+    if (p) {
+      setProfile(p);
+      // Returning user with profile already → skip the intro landing
+      setStage("home");
+    }
     // Reconnect to active session if any
     findActive({ data: { clientId: clientIdRef.current } })
       .then(({ session: s }) => {
@@ -156,6 +160,80 @@ export default function ChatApp() {
       })
       .catch(() => {});
   }, [findActive]);
+
+  // Reset add-friend state whenever the session changes
+  useEffect(() => {
+    setFriendStatus("idle");
+  }, [session?.id]);
+
+  const refreshFriends = async () => {
+    const cid = clientIdRef.current;
+    if (!cid) return;
+    try {
+      const { friends: f } = await listFriendsCall({ data: { clientId: cid } });
+      setFriends(f as Friend[]);
+    } catch {
+      // ignore
+    }
+  };
+
+  async function onAddFriend() {
+    if (!session) return;
+    setFriendStatus("pending");
+    try {
+      const res = await addFriendCall({
+        data: {
+          sessionId: session.id,
+          clientId: clientIdRef.current,
+          profile,
+        },
+      });
+      if (res.mutual) {
+        setFriendStatus("mutual");
+        refreshFriends();
+      }
+    } catch {
+      setFriendStatus("idle");
+    }
+  }
+
+  async function onRemoveFriend(otherId: string) {
+    await removeFriendCall({
+      data: { clientId: clientIdRef.current, otherId },
+    });
+    setFriends((prev) => prev.filter((f) => f.clientId !== otherId));
+  }
+
+  function goHome() {
+    if (rematchTimerRef.current) {
+      clearTimeout(rematchTimerRef.current);
+      rematchTimerRef.current = null;
+    }
+    setStage("home");
+    setSession(null);
+    setMessages([]);
+    setEndedReason(null);
+    setPartnerTyping(false);
+  }
+
+  async function onReturnHomeFromMatching() {
+    await leaveQ({ data: { clientId: clientIdRef.current } }).catch(() => {});
+    goHome();
+  }
+
+  async function onReturnHomeFromDeciding() {
+    if (session) {
+      await leaveS({
+        data: { sessionId: session.id, clientId: clientIdRef.current },
+      }).catch(() => {});
+    }
+    goHome();
+  }
+
+  async function openFriends() {
+    await refreshFriends();
+    setStage("friends");
+  }
 
   // ticking clock for countdown
   useEffect(() => {
