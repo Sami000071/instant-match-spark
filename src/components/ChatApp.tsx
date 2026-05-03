@@ -606,14 +606,28 @@ function reasonText(s: SessionRow, cid: string): string {
 }
 
 // ─── Header ────────────────────────────────────────────────────────────────
-function Header() {
+function Header({
+  onHome,
+  onFriends,
+  friendsCount,
+}: {
+  onHome?: () => void;
+  onFriends?: () => void;
+  friendsCount: number;
+}) {
   return (
     <header className="mb-6 flex items-center justify-between">
-      <div className="flex items-center gap-2">
+      <button
+        type="button"
+        onClick={onHome}
+        disabled={!onHome}
+        className="flex items-center gap-2 rounded-lg disabled:cursor-default"
+        aria-label="Home"
+      >
         <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[var(--gradient-accent)] glow-pink">
           <Zap className="h-5 w-5 text-background" strokeWidth={3} />
         </div>
-        <div>
+        <div className="text-left">
           <h1 className="text-xl font-black tracking-tight">
             <span className="text-gradient">blink</span>
           </h1>
@@ -621,11 +635,29 @@ function Header() {
             mutual match · 5s
           </p>
         </div>
+      </button>
+      <div className="flex items-center gap-2">
+        {onFriends && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={onFriends}
+            className="h-8 gap-1.5 border-[var(--neon-pink)]/40 bg-transparent text-xs hover:bg-[var(--neon-pink)]/10"
+          >
+            <Users className="h-3.5 w-3.5" />
+            Friends
+            {friendsCount > 0 && (
+              <span className="ml-0.5 rounded-full bg-[var(--neon-pink)]/20 px-1.5 text-[10px] font-bold text-[var(--neon-pink)]">
+                {friendsCount}
+              </span>
+            )}
+          </Button>
+        )}
+        <Badge variant="outline" className="border-[var(--neon-cyan)]/40 text-[var(--neon-cyan)]">
+          <span className="mr-1 inline-block h-1.5 w-1.5 rounded-full bg-[var(--neon-cyan)] animate-pulse" />
+          live
+        </Badge>
       </div>
-      <Badge variant="outline" className="border-[var(--neon-cyan)]/40 text-[var(--neon-cyan)]">
-        <span className="mr-1 inline-block h-1.5 w-1.5 rounded-full bg-[var(--neon-cyan)] animate-pulse" />
-        live
-      </Badge>
     </header>
   );
 }
