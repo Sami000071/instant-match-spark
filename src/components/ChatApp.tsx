@@ -991,6 +991,17 @@ function DecisionScreen({
           </Button>
         </div>
       </div>
+      <div className="mt-3 flex justify-center">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={onReturnHome}
+          className="gap-1.5 text-xs text-muted-foreground"
+        >
+          <Home className="h-3.5 w-3.5" />
+          Return to home
+        </Button>
+      </div>
     </div>
   );
 }
