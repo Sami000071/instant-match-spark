@@ -35,6 +35,78 @@ export type Database = {
         }
         Relationships: []
       }
+      friend_requests: {
+        Row: {
+          created_at: string
+          from_avatar_url: string
+          from_client_id: string
+          from_country: string
+          from_nickname: string
+          id: string
+          session_id: string
+          to_client_id: string
+        }
+        Insert: {
+          created_at?: string
+          from_avatar_url?: string
+          from_client_id: string
+          from_country?: string
+          from_nickname?: string
+          id?: string
+          session_id: string
+          to_client_id: string
+        }
+        Update: {
+          created_at?: string
+          from_avatar_url?: string
+          from_client_id?: string
+          from_country?: string
+          from_nickname?: string
+          id?: string
+          session_id?: string
+          to_client_id?: string
+        }
+        Relationships: []
+      }
+      friendships: {
+        Row: {
+          avatar_a: string
+          avatar_b: string
+          client_id_a: string
+          client_id_b: string
+          country_a: string
+          country_b: string
+          created_at: string
+          id: string
+          nickname_a: string
+          nickname_b: string
+        }
+        Insert: {
+          avatar_a?: string
+          avatar_b?: string
+          client_id_a: string
+          client_id_b: string
+          country_a?: string
+          country_b?: string
+          created_at?: string
+          id?: string
+          nickname_a?: string
+          nickname_b?: string
+        }
+        Update: {
+          avatar_a?: string
+          avatar_b?: string
+          client_id_a?: string
+          client_id_b?: string
+          country_a?: string
+          country_b?: string
+          created_at?: string
+          id?: string
+          nickname_a?: string
+          nickname_b?: string
+        }
+        Relationships: []
+      }
       match_sessions: {
         Row: {
           created_at: string
