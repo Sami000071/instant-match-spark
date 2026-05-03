@@ -838,7 +838,13 @@ function HomeScreen({
 }
 
 // ─── Matching ──────────────────────────────────────────────────────────────
-function MatchingScreen({ onCancel }: { onCancel: () => void }) {
+function MatchingScreen({
+  onCancel,
+  onReturnHome,
+}: {
+  onCancel: () => void;
+  onReturnHome: () => void;
+}) {
   return (
     <div className="flex flex-col items-center gap-8 animate-fade-up">
       <div className="relative">
@@ -852,9 +858,20 @@ function MatchingScreen({ onCancel }: { onCancel: () => void }) {
         <p className="text-2xl font-bold">Looking for someone…</p>
         <p className="mt-1 text-sm text-muted-foreground">Hold tight, this is usually quick.</p>
       </div>
-      <Button variant="ghost" onClick={onCancel} className="text-muted-foreground">
-        Cancel
-      </Button>
+      <div className="flex flex-col items-center gap-2">
+        <Button variant="ghost" onClick={onCancel} className="text-muted-foreground">
+          Cancel
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={onReturnHome}
+          className="gap-1.5 border-border/60 bg-transparent text-xs"
+        >
+          <Home className="h-3.5 w-3.5" />
+          Return to home
+        </Button>
+      </div>
     </div>
   );
 }
