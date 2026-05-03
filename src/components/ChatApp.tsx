@@ -113,7 +113,7 @@ const REPORT_REASONS = [
 const CHAT_EMOJIS = ["😀", "😂", "😍", "😎", "😭", "😡", "👍", "👎", "❤️", "🔥", "✨", "🎉", "👋", "🙏"];
 
 export default function ChatApp() {
-  const [stage, setStage] = useState<Stage>("home");
+  const [stage, setStage] = useState<Stage>("intro");
   const [profile, setProfile] = useState<Profile>(EMPTY_PROFILE);
   const [session, setSession] = useState<SessionRow | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -122,6 +122,8 @@ export default function ChatApp() {
   const [now, setNow] = useState(() => Date.now());
   const [partnerTyping, setPartnerTyping] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
+  const [friendStatus, setFriendStatus] = useState<"idle" | "pending" | "mutual">("idle");
+  const [friends, setFriends] = useState<Friend[]>([]);
   const clientIdRef = useRef<string>("");
   const typingChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const lastTypingSentRef = useRef<number>(0);
@@ -136,6 +138,9 @@ export default function ChatApp() {
   const findActive = useServerFn(findActiveSessionFn);
   const reportFn = useServerFn(reportPartnerFn);
   const blockFn = useServerFn(blockPartnerFn);
+  const addFriendCall = useServerFn(addFriendFn);
+  const listFriendsCall = useServerFn(listFriendsFn);
+  const removeFriendCall = useServerFn(removeFriendFn);
 
   // hydrate client id + profile, then attempt reconnect
   useEffect(() => {
