@@ -58,6 +58,15 @@ import {
   Camera,
   Loader2,
   Smile,
+  Users,
+  ArrowLeft,
+  Home,
+  UserPlus,
+  Trash2,
+  ShieldCheck,
+  Globe2,
+  MessageCircle,
+  Clock,
 } from "lucide-react";
 
 type Stage = "home" | "matching" | "deciding" | "chatting" | "ended";
