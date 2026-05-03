@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import {
+  addFriend,
   applyDecision,
   blockPartner,
   createAvatarUploadUrl,
@@ -9,6 +10,8 @@ import {
   joinQueueAndTryMatch,
   leaveQueue,
   leaveSession,
+  listFriends,
+  removeFriend,
   reportPartner,
   sendMessage,
 } from "./matchmaking.server";
