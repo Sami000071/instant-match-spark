@@ -711,9 +711,16 @@ function HomeScreen({
 
   return (
     <div className="w-full max-w-md animate-fade-up">
+      <button
+        type="button"
+        onClick={onBackToIntro}
+        className="mb-4 inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+      >
+        <ArrowLeft className="h-3 w-3" /> Back
+      </button>
       <div className="mb-8 text-center">
         <h2 className="mb-3 text-5xl font-black leading-none tracking-tight md:text-6xl">
-          Talk to a <span className="text-gradient">stranger</span>.
+          Set up your <span className="text-gradient">profile</span>.
         </h2>
         <p className="text-sm text-muted-foreground">
           Both of you have 5 seconds to accept. No swiping, no waiting.
