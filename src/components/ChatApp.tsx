@@ -666,9 +666,11 @@ function Header({
 function HomeScreen({
   initial,
   onStart,
+  onBackToIntro,
 }: {
   initial: Profile;
   onStart: (p: Profile) => void;
+  onBackToIntro: () => void;
 }) {
   const [nickname, setNickname] = useState(initial.nickname);
   const [country, setCountry] = useState(initial.country);
