@@ -1362,3 +1362,174 @@ function ReportDialog({
     </Dialog>
   );
 }
+
+// ─── Intro / Landing ───────────────────────────────────────────────────────
+function IntroScreen({
+  onStart,
+  onFriends,
+}: {
+  onStart: () => void;
+  onFriends: () => void;
+}) {
+  const features = [
+    {
+      icon: <Clock className="h-5 w-5 text-[var(--neon-pink)]" />,
+      title: "5-second match",
+      body: "Both of you tap accept within 5 seconds — or the match disappears.",
+    },
+    {
+      icon: <Globe2 className="h-5 w-5 text-[var(--neon-cyan)]" />,
+      title: "Anyone, anywhere",
+      body: "Anonymous strangers from around the world. No accounts, no waiting.",
+    },
+    {
+      icon: <UserPlus className="h-5 w-5 text-[var(--neon-lime)]" />,
+      title: "Add friends",
+      body: "Click after a great chat — if you both add, you become friends.",
+    },
+    {
+      icon: <ShieldCheck className="h-5 w-5 text-[var(--neon-pink)]" />,
+      title: "Stay safe",
+      body: "Report or block in one tap. Blocked users never match with you again.",
+    },
+  ];
+
+  return (
+    <div className="w-full max-w-2xl animate-fade-up">
+      <div className="mb-10 text-center">
+        <Badge
+          variant="outline"
+          className="mb-4 border-[var(--neon-cyan)]/40 text-[var(--neon-cyan)]"
+        >
+          <Sparkles className="mr-1 h-3 w-3" /> anonymous · instant · 1-on-1
+        </Badge>
+        <h2 className="mb-4 text-5xl font-black leading-[0.95] tracking-tight md:text-7xl">
+          Talk to a <span className="text-gradient">stranger</span>
+          <br />
+          in 5 seconds.
+        </h2>
+        <p className="mx-auto max-w-md text-base text-muted-foreground">
+          Blink pairs you with one random person. You both decide in 5 seconds.
+          If you both tap accept, the chat opens.
+        </p>
+      </div>
+
+      <div className="mb-8 flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
+        <Button
+          onClick={onStart}
+          className="h-14 w-full max-w-xs bg-[var(--gradient-accent)] text-base font-bold text-background hover:opacity-90 glow-pink sm:w-auto sm:px-10"
+        >
+          <Sparkles className="mr-2 h-5 w-5" />
+          Get started
+        </Button>
+        <Button
+          onClick={onFriends}
+          variant="outline"
+          className="h-14 w-full max-w-xs gap-2 border-[var(--neon-pink)]/40 bg-transparent text-base font-bold sm:w-auto sm:px-8"
+        >
+          <Users className="h-5 w-5" />
+          My friends
+        </Button>
+      </div>
+
+      <div className="grid gap-3 sm:grid-cols-2">
+        {features.map((f) => (
+          <div
+            key={f.title}
+            className="rounded-2xl border border-border bg-[var(--gradient-card)] p-4 shadow-lg"
+          >
+            <div className="mb-2 flex items-center gap-2">
+              {f.icon}
+              <p className="text-sm font-bold">{f.title}</p>
+            </div>
+            <p className="text-xs leading-relaxed text-muted-foreground">{f.body}</p>
+          </div>
+        ))}
+      </div>
+
+      <p className="mt-6 text-center text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+        be kind · 18+ · anonymous
+      </p>
+    </div>
+  );
+}
+
+// ─── Friends ───────────────────────────────────────────────────────────────
+function FriendsScreen({
+  friends,
+  onBack,
+  onRemove,
+  onRefresh,
+}: {
+  friends: Friend[];
+  onBack: () => void;
+  onRemove: (id: string) => void;
+  onRefresh: () => void;
+}) {
+  useEffect(() => {
+    onRefresh();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  return (
+    <div className="w-full max-w-md animate-fade-up">
+      <button
+        type="button"
+        onClick={onBack}
+        className="mb-4 inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+      >
+        <ArrowLeft className="h-3 w-3" /> Back
+      </button>
+
+      <div className="mb-6">
+        <h2 className="text-3xl font-black tracking-tight">
+          Your <span className="text-gradient">friends</span>
+        </h2>
+        <p className="mt-1 text-xs text-muted-foreground">
+          When you both tap add friend during a chat, you'll show up here.
+        </p>
+      </div>
+
+      <div className="space-y-2 rounded-2xl border border-border bg-[var(--gradient-card)] p-3 shadow-2xl">
+        {friends.length === 0 && (
+          <div className="flex flex-col items-center gap-2 px-4 py-10 text-center">
+            <MessageCircle className="h-10 w-10 text-muted-foreground/40" />
+            <p className="text-sm font-semibold">No friends yet</p>
+            <p className="text-xs text-muted-foreground">
+              Match, chat, and tap the add-friend icon together.
+            </p>
+          </div>
+        )}
+        {friends.map((f) => {
+          const country = findCountry(f.country);
+          return (
+            <div
+              key={f.clientId}
+              className="flex items-center gap-3 rounded-xl bg-background/40 p-3"
+            >
+              <Avatar nickname={f.nickname || "?"} avatarUrl={f.avatarUrl} small />
+              <div className="min-w-0 flex-1">
+                <p className="flex items-center gap-1.5 truncate text-sm font-bold">
+                  {f.nickname || "stranger"}
+                  {country && <span title={country.name}>{country.flag}</span>}
+                </p>
+                <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                  friends since {new Date(f.since).toLocaleDateString()}
+                </p>
+              </div>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => onRemove(f.clientId)}
+                title="Remove friend"
+                className="h-9 w-9 text-muted-foreground hover:text-destructive"
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
