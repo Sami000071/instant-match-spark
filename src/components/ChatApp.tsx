@@ -69,7 +69,15 @@ import {
   Clock,
 } from "lucide-react";
 
-type Stage = "home" | "matching" | "deciding" | "chatting" | "ended";
+type Stage = "intro" | "home" | "matching" | "deciding" | "chatting" | "ended" | "friends";
+
+type Friend = {
+  clientId: string;
+  nickname: string;
+  avatarUrl: string;
+  country: string;
+  since: string;
+};
 
 type SessionRow = {
   id: string;
