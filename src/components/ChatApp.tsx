@@ -1073,6 +1073,33 @@ function ChatScreen({
           <Button
             variant="ghost"
             size="icon"
+            onClick={onAddFriend}
+            disabled={friendStatus !== "idle"}
+            title={
+              friendStatus === "mutual"
+                ? "You are friends"
+                : friendStatus === "pending"
+                  ? "Friend request sent"
+                  : "Add friend"
+            }
+            className={
+              "h-9 w-9 " +
+              (friendStatus === "mutual"
+                ? "text-[var(--neon-lime)]"
+                : friendStatus === "pending"
+                  ? "text-[var(--neon-cyan)]"
+                  : "text-muted-foreground hover:text-[var(--neon-pink)]")
+            }
+          >
+            {friendStatus === "mutual" ? (
+              <ShieldCheck className="h-4 w-4" />
+            ) : (
+              <UserPlus className="h-4 w-4" />
+            )}
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
             onClick={onReport}
             title="Report"
             className="h-9 w-9 text-muted-foreground hover:text-destructive"
