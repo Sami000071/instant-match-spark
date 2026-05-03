@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import {
+  addFriend,
   applyDecision,
   blockPartner,
   createAvatarUploadUrl,
@@ -9,6 +10,8 @@ import {
   joinQueueAndTryMatch,
   leaveQueue,
   leaveSession,
+  listFriends,
+  removeFriend,
   reportPartner,
   sendMessage,
 } from "./matchmaking.server";
@@ -122,4 +125,30 @@ export const createAvatarUploadUrlFn = createServerFn({ method: "POST" })
   )
   .handler(async ({ data }) => {
     return createAvatarUploadUrl(data.clientId, data.ext);
+  });
+
+export const addFriendFn = createServerFn({ method: "POST" })
+  .inputValidator(
+    z.object({
+      sessionId: uuid,
+      clientId: uuid,
+      profile: profileSchema,
+    }).parse,
+  )
+  .handler(async ({ data }) => {
+    return addFriend(data.sessionId, data.clientId, data.profile);
+  });
+
+export const listFriendsFn = createServerFn({ method: "POST" })
+  .inputValidator(z.object({ clientId: uuid }).parse)
+  .handler(async ({ data }) => {
+    const friends = await listFriends(data.clientId);
+    return { friends };
+  });
+
+export const removeFriendFn = createServerFn({ method: "POST" })
+  .inputValidator(z.object({ clientId: uuid, otherId: uuid }).parse)
+  .handler(async ({ data }) => {
+    await removeFriend(data.clientId, data.otherId);
+    return { ok: true };
   });

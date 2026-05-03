@@ -313,6 +313,118 @@ export async function blockPartner(sessionId: string, clientId: string) {
   return { blockedClientId: otherId };
 }
 
+// ─── Friends ──────────────────────────────────────────────────────────────
+
+export type Friend = {
+  clientId: string;
+  nickname: string;
+  avatarUrl: string;
+  country: string;
+  since: string;
+};
+
+function pairOrder(a: string, b: string): [string, string] {
+  return a < b ? [a, b] : [b, a];
+}
+
+export async function addFriend(
+  sessionId: string,
+  clientId: string,
+  myProfile: Profile,
+): Promise<{ mutual: boolean }> {
+  const { data: session } = await supabaseAdmin
+    .from("match_sessions")
+    .select(
+      "user_a_client_id,user_b_client_id,user_a_nickname,user_b_nickname,user_a_avatar_url,user_b_avatar_url,user_a_country,user_b_country",
+    )
+    .eq("id", sessionId)
+    .single();
+  if (!session) throw new Error("Session not found");
+  const isA = session.user_a_client_id === clientId;
+  const isB = session.user_b_client_id === clientId;
+  if (!isA && !isB) throw new Error("Not a participant");
+
+  const otherId = isA ? session.user_b_client_id : session.user_a_client_id;
+  const otherNick = isA ? session.user_b_nickname : session.user_a_nickname;
+  const otherAvatar = isA ? session.user_b_avatar_url : session.user_a_avatar_url;
+  const otherCountry = isA ? session.user_b_country : session.user_a_country;
+
+  // Record this user's add request
+  await supabaseAdmin
+    .from("friend_requests")
+    .upsert(
+      {
+        session_id: sessionId,
+        from_client_id: clientId,
+        to_client_id: otherId,
+        from_nickname: myProfile.nickname,
+        from_avatar_url: myProfile.avatarUrl,
+        from_country: myProfile.country,
+      },
+      { onConflict: "session_id,from_client_id" },
+    );
+
+  // Check for reverse
+  const { data: reverse } = await supabaseAdmin
+    .from("friend_requests")
+    .select("from_nickname,from_avatar_url,from_country")
+    .eq("session_id", sessionId)
+    .eq("from_client_id", otherId)
+    .eq("to_client_id", clientId)
+    .maybeSingle();
+
+  if (!reverse) return { mutual: false };
+
+  // Mutual — create friendship (use canonical pair order)
+  const [idA, idB] = pairOrder(clientId, otherId);
+  const aIsMe = idA === clientId;
+  await supabaseAdmin
+    .from("friendships")
+    .upsert(
+      {
+        client_id_a: idA,
+        client_id_b: idB,
+        nickname_a: aIsMe ? myProfile.nickname : otherNick,
+        nickname_b: aIsMe ? otherNick : myProfile.nickname,
+        avatar_a: aIsMe ? myProfile.avatarUrl : otherAvatar,
+        avatar_b: aIsMe ? otherAvatar : myProfile.avatarUrl,
+        country_a: aIsMe ? myProfile.country : otherCountry,
+        country_b: aIsMe ? otherCountry : myProfile.country,
+      },
+      { onConflict: "client_id_a,client_id_b" },
+    );
+
+  return { mutual: true };
+}
+
+export async function listFriends(clientId: string): Promise<Friend[]> {
+  const { data } = await supabaseAdmin
+    .from("friendships")
+    .select("*")
+    .or(`client_id_a.eq.${clientId},client_id_b.eq.${clientId}`)
+    .order("created_at", { ascending: false });
+  if (!data) return [];
+  return data.map((row) => {
+    const isA = row.client_id_a === clientId;
+    return {
+      clientId: isA ? row.client_id_b : row.client_id_a,
+      nickname: isA ? row.nickname_b : row.nickname_a,
+      avatarUrl: isA ? row.avatar_b : row.avatar_a,
+      country: isA ? row.country_b : row.country_a,
+      since: row.created_at,
+    };
+  });
+}
+
+export async function removeFriend(clientId: string, otherId: string) {
+  const [idA, idB] = pairOrder(clientId, otherId);
+  await supabaseAdmin
+    .from("friendships")
+    .delete()
+    .eq("client_id_a", idA)
+    .eq("client_id_b", idB);
+}
+
 // Generate a signed upload URL for an avatar file.
 export async function createAvatarUploadUrl(clientId: string, ext: string) {
   const safeExt = /^(png|jpe?g|webp|gif)$/i.test(ext) ? ext.toLowerCase() : "jpg";

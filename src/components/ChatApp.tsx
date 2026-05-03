@@ -11,6 +11,7 @@ import {
 import { addBlocked } from "@/lib/blocks";
 import { COUNTRIES, findCountry } from "@/lib/countries";
 import {
+  addFriendFn,
   blockPartnerFn,
   createAvatarUploadUrlFn,
   decideFn,
@@ -19,6 +20,8 @@ import {
   joinQueueFn,
   leaveQueueFn,
   leaveSessionFn,
+  listFriendsFn,
+  removeFriendFn,
   reportPartnerFn,
   sendMessageFn,
 } from "@/server/matchmaking.functions";
@@ -55,9 +58,26 @@ import {
   Camera,
   Loader2,
   Smile,
+  Users,
+  ArrowLeft,
+  Home,
+  UserPlus,
+  Trash2,
+  ShieldCheck,
+  Globe2,
+  MessageCircle,
+  Clock,
 } from "lucide-react";
 
-type Stage = "home" | "matching" | "deciding" | "chatting" | "ended";
+type Stage = "intro" | "home" | "matching" | "deciding" | "chatting" | "ended" | "friends";
+
+type Friend = {
+  clientId: string;
+  nickname: string;
+  avatarUrl: string;
+  country: string;
+  since: string;
+};
 
 type SessionRow = {
   id: string;
@@ -93,7 +113,7 @@ const REPORT_REASONS = [
 const CHAT_EMOJIS = ["😀", "😂", "😍", "😎", "😭", "😡", "👍", "👎", "❤️", "🔥", "✨", "🎉", "👋", "🙏"];
 
 export default function ChatApp() {
-  const [stage, setStage] = useState<Stage>("home");
+  const [stage, setStage] = useState<Stage>("intro");
   const [profile, setProfile] = useState<Profile>(EMPTY_PROFILE);
   const [session, setSession] = useState<SessionRow | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -102,6 +122,8 @@ export default function ChatApp() {
   const [now, setNow] = useState(() => Date.now());
   const [partnerTyping, setPartnerTyping] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
+  const [friendStatus, setFriendStatus] = useState<"idle" | "pending" | "mutual">("idle");
+  const [friends, setFriends] = useState<Friend[]>([]);
   const clientIdRef = useRef<string>("");
   const typingChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const lastTypingSentRef = useRef<number>(0);
@@ -116,12 +138,19 @@ export default function ChatApp() {
   const findActive = useServerFn(findActiveSessionFn);
   const reportFn = useServerFn(reportPartnerFn);
   const blockFn = useServerFn(blockPartnerFn);
+  const addFriendCall = useServerFn(addFriendFn);
+  const listFriendsCall = useServerFn(listFriendsFn);
+  const removeFriendCall = useServerFn(removeFriendFn);
 
   // hydrate client id + profile, then attempt reconnect
   useEffect(() => {
     clientIdRef.current = getClientId();
     const p = loadProfile();
-    if (p) setProfile(p);
+    if (p) {
+      setProfile(p);
+      // Returning user with profile already → skip the intro landing
+      setStage("home");
+    }
     // Reconnect to active session if any
     findActive({ data: { clientId: clientIdRef.current } })
       .then(({ session: s }) => {
@@ -131,6 +160,80 @@ export default function ChatApp() {
       })
       .catch(() => {});
   }, [findActive]);
+
+  // Reset add-friend state whenever the session changes
+  useEffect(() => {
+    setFriendStatus("idle");
+  }, [session?.id]);
+
+  const refreshFriends = async () => {
+    const cid = clientIdRef.current;
+    if (!cid) return;
+    try {
+      const { friends: f } = await listFriendsCall({ data: { clientId: cid } });
+      setFriends(f as Friend[]);
+    } catch {
+      // ignore
+    }
+  };
+
+  async function onAddFriend() {
+    if (!session) return;
+    setFriendStatus("pending");
+    try {
+      const res = await addFriendCall({
+        data: {
+          sessionId: session.id,
+          clientId: clientIdRef.current,
+          profile,
+        },
+      });
+      if (res.mutual) {
+        setFriendStatus("mutual");
+        refreshFriends();
+      }
+    } catch {
+      setFriendStatus("idle");
+    }
+  }
+
+  async function onRemoveFriend(otherId: string) {
+    await removeFriendCall({
+      data: { clientId: clientIdRef.current, otherId },
+    });
+    setFriends((prev) => prev.filter((f) => f.clientId !== otherId));
+  }
+
+  function goHome() {
+    if (rematchTimerRef.current) {
+      clearTimeout(rematchTimerRef.current);
+      rematchTimerRef.current = null;
+    }
+    setStage("home");
+    setSession(null);
+    setMessages([]);
+    setEndedReason(null);
+    setPartnerTyping(false);
+  }
+
+  async function onReturnHomeFromMatching() {
+    await leaveQ({ data: { clientId: clientIdRef.current } }).catch(() => {});
+    goHome();
+  }
+
+  async function onReturnHomeFromDeciding() {
+    if (session) {
+      await leaveS({
+        data: { sessionId: session.id, clientId: clientIdRef.current },
+      }).catch(() => {});
+    }
+    goHome();
+  }
+
+  async function openFriends() {
+    await refreshFriends();
+    setStage("friends");
+  }
 
   // ticking clock for countdown
   useEffect(() => {
@@ -420,13 +523,30 @@ export default function ChatApp() {
       <div className="pointer-events-none absolute -bottom-40 -right-40 h-96 w-96 rounded-full bg-[var(--neon-cyan)] opacity-20 blur-3xl animate-blob [animation-delay:-6s]" />
 
       <main className="relative mx-auto flex min-h-screen max-w-3xl flex-col px-4 py-6">
-        <Header />
+        <Header
+          onHome={stage === "home" || stage === "intro" ? undefined : goHome}
+          onFriends={stage === "intro" ? undefined : openFriends}
+          friendsCount={friends.length}
+        />
         <div className="flex flex-1 items-center justify-center">
+          {stage === "intro" && (
+            <IntroScreen
+              onStart={() => setStage("home")}
+              onFriends={openFriends}
+            />
+          )}
           {stage === "home" && (
-            <HomeScreen initial={profile} onStart={startMatching} />
+            <HomeScreen
+              initial={profile}
+              onStart={startMatching}
+              onBackToIntro={() => setStage("intro")}
+            />
           )}
           {stage === "matching" && (
-            <MatchingScreen onCancel={onCancelMatching} />
+            <MatchingScreen
+              onCancel={onCancelMatching}
+              onReturnHome={onReturnHomeFromMatching}
+            />
           )}
           {stage === "deciding" && session && (
             <DecisionScreen
@@ -434,6 +554,7 @@ export default function ChatApp() {
               clientId={clientIdRef.current}
               now={now}
               onDecide={onDecide}
+              onReturnHome={onReturnHomeFromDeciding}
             />
           )}
           {stage === "chatting" && session && (
@@ -449,11 +570,21 @@ export default function ChatApp() {
               onSkipNext={onSkipNext}
               onReport={() => setReportOpen(true)}
               onBlock={onBlock}
+              onAddFriend={onAddFriend}
+              friendStatus={friendStatus}
               partnerTyping={partnerTyping}
             />
           )}
           {stage === "ended" && (
             <EndedScreen reason={endedReason} />
+          )}
+          {stage === "friends" && (
+            <FriendsScreen
+              friends={friends}
+              onBack={() => setStage(profile.nickname ? "home" : "intro")}
+              onRemove={onRemoveFriend}
+              onRefresh={refreshFriends}
+            />
           )}
         </div>
       </main>
@@ -475,14 +606,28 @@ function reasonText(s: SessionRow, cid: string): string {
 }
 
 // ─── Header ────────────────────────────────────────────────────────────────
-function Header() {
+function Header({
+  onHome,
+  onFriends,
+  friendsCount,
+}: {
+  onHome?: () => void;
+  onFriends?: () => void;
+  friendsCount: number;
+}) {
   return (
     <header className="mb-6 flex items-center justify-between">
-      <div className="flex items-center gap-2">
+      <button
+        type="button"
+        onClick={onHome}
+        disabled={!onHome}
+        className="flex items-center gap-2 rounded-lg disabled:cursor-default"
+        aria-label="Home"
+      >
         <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[var(--gradient-accent)] glow-pink">
           <Zap className="h-5 w-5 text-background" strokeWidth={3} />
         </div>
-        <div>
+        <div className="text-left">
           <h1 className="text-xl font-black tracking-tight">
             <span className="text-gradient">blink</span>
           </h1>
@@ -490,11 +635,29 @@ function Header() {
             mutual match · 5s
           </p>
         </div>
+      </button>
+      <div className="flex items-center gap-2">
+        {onFriends && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={onFriends}
+            className="h-8 gap-1.5 border-[var(--neon-pink)]/40 bg-transparent text-xs hover:bg-[var(--neon-pink)]/10"
+          >
+            <Users className="h-3.5 w-3.5" />
+            Friends
+            {friendsCount > 0 && (
+              <span className="ml-0.5 rounded-full bg-[var(--neon-pink)]/20 px-1.5 text-[10px] font-bold text-[var(--neon-pink)]">
+                {friendsCount}
+              </span>
+            )}
+          </Button>
+        )}
+        <Badge variant="outline" className="border-[var(--neon-cyan)]/40 text-[var(--neon-cyan)]">
+          <span className="mr-1 inline-block h-1.5 w-1.5 rounded-full bg-[var(--neon-cyan)] animate-pulse" />
+          live
+        </Badge>
       </div>
-      <Badge variant="outline" className="border-[var(--neon-cyan)]/40 text-[var(--neon-cyan)]">
-        <span className="mr-1 inline-block h-1.5 w-1.5 rounded-full bg-[var(--neon-cyan)] animate-pulse" />
-        live
-      </Badge>
     </header>
   );
 }
@@ -503,9 +666,11 @@ function Header() {
 function HomeScreen({
   initial,
   onStart,
+  onBackToIntro,
 }: {
   initial: Profile;
   onStart: (p: Profile) => void;
+  onBackToIntro: () => void;
 }) {
   const [nickname, setNickname] = useState(initial.nickname);
   const [country, setCountry] = useState(initial.country);
@@ -546,9 +711,16 @@ function HomeScreen({
 
   return (
     <div className="w-full max-w-md animate-fade-up">
+      <button
+        type="button"
+        onClick={onBackToIntro}
+        className="mb-4 inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+      >
+        <ArrowLeft className="h-3 w-3" /> Back
+      </button>
       <div className="mb-8 text-center">
         <h2 className="mb-3 text-5xl font-black leading-none tracking-tight md:text-6xl">
-          Talk to a <span className="text-gradient">stranger</span>.
+          Set up your <span className="text-gradient">profile</span>.
         </h2>
         <p className="text-sm text-muted-foreground">
           Both of you have 5 seconds to accept. No swiping, no waiting.
@@ -666,7 +838,13 @@ function HomeScreen({
 }
 
 // ─── Matching ──────────────────────────────────────────────────────────────
-function MatchingScreen({ onCancel }: { onCancel: () => void }) {
+function MatchingScreen({
+  onCancel,
+  onReturnHome,
+}: {
+  onCancel: () => void;
+  onReturnHome: () => void;
+}) {
   return (
     <div className="flex flex-col items-center gap-8 animate-fade-up">
       <div className="relative">
@@ -680,9 +858,20 @@ function MatchingScreen({ onCancel }: { onCancel: () => void }) {
         <p className="text-2xl font-bold">Looking for someone…</p>
         <p className="mt-1 text-sm text-muted-foreground">Hold tight, this is usually quick.</p>
       </div>
-      <Button variant="ghost" onClick={onCancel} className="text-muted-foreground">
-        Cancel
-      </Button>
+      <div className="flex flex-col items-center gap-2">
+        <Button variant="ghost" onClick={onCancel} className="text-muted-foreground">
+          Cancel
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={onReturnHome}
+          className="gap-1.5 border-border/60 bg-transparent text-xs"
+        >
+          <Home className="h-3.5 w-3.5" />
+          Return to home
+        </Button>
+      </div>
     </div>
   );
 }
@@ -693,11 +882,13 @@ function DecisionScreen({
   clientId,
   now,
   onDecide,
+  onReturnHome,
 }: {
   session: SessionRow;
   clientId: string;
   now: number;
   onDecide: (d: "accept" | "skip") => void;
+  onReturnHome: () => void;
 }) {
   const isA = session.user_a_client_id === clientId;
   const myDecision = isA ? session.user_a_decision : session.user_b_decision;
@@ -800,6 +991,17 @@ function DecisionScreen({
           </Button>
         </div>
       </div>
+      <div className="mt-3 flex justify-center">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={onReturnHome}
+          className="gap-1.5 text-xs text-muted-foreground"
+        >
+          <Home className="h-3.5 w-3.5" />
+          Return to home
+        </Button>
+      </div>
     </div>
   );
 }
@@ -818,6 +1020,8 @@ function ChatScreen({
   onReport,
   onBlock,
   partnerTyping,
+  onAddFriend,
+  friendStatus,
 }: {
   session: SessionRow;
   clientId: string;
@@ -831,6 +1035,8 @@ function ChatScreen({
   onReport: () => void;
   onBlock: () => void;
   partnerTyping: boolean;
+  onAddFriend: () => void;
+  friendStatus: "idle" | "pending" | "mutual";
 }) {
   const isA = session.user_a_client_id === clientId;
   const otherNick = isA ? session.user_b_nickname : session.user_a_nickname;
@@ -864,6 +1070,33 @@ function ChatScreen({
           </div>
         </div>
         <div className="flex items-center gap-1">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={onAddFriend}
+            disabled={friendStatus !== "idle"}
+            title={
+              friendStatus === "mutual"
+                ? "You are friends"
+                : friendStatus === "pending"
+                  ? "Friend request sent"
+                  : "Add friend"
+            }
+            className={
+              "h-9 w-9 " +
+              (friendStatus === "mutual"
+                ? "text-[var(--neon-lime)]"
+                : friendStatus === "pending"
+                  ? "text-[var(--neon-cyan)]"
+                  : "text-muted-foreground hover:text-[var(--neon-pink)]")
+            }
+          >
+            {friendStatus === "mutual" ? (
+              <ShieldCheck className="h-4 w-4" />
+            ) : (
+              <UserPlus className="h-4 w-4" />
+            )}
+          </Button>
           <Button
             variant="ghost"
             size="icon"
@@ -1127,5 +1360,176 @@ function ReportDialog({
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  );
+}
+
+// ─── Intro / Landing ───────────────────────────────────────────────────────
+function IntroScreen({
+  onStart,
+  onFriends,
+}: {
+  onStart: () => void;
+  onFriends: () => void;
+}) {
+  const features = [
+    {
+      icon: <Clock className="h-5 w-5 text-[var(--neon-pink)]" />,
+      title: "5-second match",
+      body: "Both of you tap accept within 5 seconds — or the match disappears.",
+    },
+    {
+      icon: <Globe2 className="h-5 w-5 text-[var(--neon-cyan)]" />,
+      title: "Anyone, anywhere",
+      body: "Anonymous strangers from around the world. No accounts, no waiting.",
+    },
+    {
+      icon: <UserPlus className="h-5 w-5 text-[var(--neon-lime)]" />,
+      title: "Add friends",
+      body: "Click after a great chat — if you both add, you become friends.",
+    },
+    {
+      icon: <ShieldCheck className="h-5 w-5 text-[var(--neon-pink)]" />,
+      title: "Stay safe",
+      body: "Report or block in one tap. Blocked users never match with you again.",
+    },
+  ];
+
+  return (
+    <div className="w-full max-w-2xl animate-fade-up">
+      <div className="mb-10 text-center">
+        <Badge
+          variant="outline"
+          className="mb-4 border-[var(--neon-cyan)]/40 text-[var(--neon-cyan)]"
+        >
+          <Sparkles className="mr-1 h-3 w-3" /> anonymous · instant · 1-on-1
+        </Badge>
+        <h2 className="mb-4 text-5xl font-black leading-[0.95] tracking-tight md:text-7xl">
+          Talk to a <span className="text-gradient">stranger</span>
+          <br />
+          in 5 seconds.
+        </h2>
+        <p className="mx-auto max-w-md text-base text-muted-foreground">
+          Blink pairs you with one random person. You both decide in 5 seconds.
+          If you both tap accept, the chat opens.
+        </p>
+      </div>
+
+      <div className="mb-8 flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
+        <Button
+          onClick={onStart}
+          className="h-14 w-full max-w-xs bg-[var(--gradient-accent)] text-base font-bold text-background hover:opacity-90 glow-pink sm:w-auto sm:px-10"
+        >
+          <Sparkles className="mr-2 h-5 w-5" />
+          Get started
+        </Button>
+        <Button
+          onClick={onFriends}
+          variant="outline"
+          className="h-14 w-full max-w-xs gap-2 border-[var(--neon-pink)]/40 bg-transparent text-base font-bold sm:w-auto sm:px-8"
+        >
+          <Users className="h-5 w-5" />
+          My friends
+        </Button>
+      </div>
+
+      <div className="grid gap-3 sm:grid-cols-2">
+        {features.map((f) => (
+          <div
+            key={f.title}
+            className="rounded-2xl border border-border bg-[var(--gradient-card)] p-4 shadow-lg"
+          >
+            <div className="mb-2 flex items-center gap-2">
+              {f.icon}
+              <p className="text-sm font-bold">{f.title}</p>
+            </div>
+            <p className="text-xs leading-relaxed text-muted-foreground">{f.body}</p>
+          </div>
+        ))}
+      </div>
+
+      <p className="mt-6 text-center text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+        be kind · 18+ · anonymous
+      </p>
+    </div>
+  );
+}
+
+// ─── Friends ───────────────────────────────────────────────────────────────
+function FriendsScreen({
+  friends,
+  onBack,
+  onRemove,
+  onRefresh,
+}: {
+  friends: Friend[];
+  onBack: () => void;
+  onRemove: (id: string) => void;
+  onRefresh: () => void;
+}) {
+  useEffect(() => {
+    onRefresh();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  return (
+    <div className="w-full max-w-md animate-fade-up">
+      <button
+        type="button"
+        onClick={onBack}
+        className="mb-4 inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+      >
+        <ArrowLeft className="h-3 w-3" /> Back
+      </button>
+
+      <div className="mb-6">
+        <h2 className="text-3xl font-black tracking-tight">
+          Your <span className="text-gradient">friends</span>
+        </h2>
+        <p className="mt-1 text-xs text-muted-foreground">
+          When you both tap add friend during a chat, you'll show up here.
+        </p>
+      </div>
+
+      <div className="space-y-2 rounded-2xl border border-border bg-[var(--gradient-card)] p-3 shadow-2xl">
+        {friends.length === 0 && (
+          <div className="flex flex-col items-center gap-2 px-4 py-10 text-center">
+            <MessageCircle className="h-10 w-10 text-muted-foreground/40" />
+            <p className="text-sm font-semibold">No friends yet</p>
+            <p className="text-xs text-muted-foreground">
+              Match, chat, and tap the add-friend icon together.
+            </p>
+          </div>
+        )}
+        {friends.map((f) => {
+          const country = findCountry(f.country);
+          return (
+            <div
+              key={f.clientId}
+              className="flex items-center gap-3 rounded-xl bg-background/40 p-3"
+            >
+              <Avatar nickname={f.nickname || "?"} avatarUrl={f.avatarUrl} small />
+              <div className="min-w-0 flex-1">
+                <p className="flex items-center gap-1.5 truncate text-sm font-bold">
+                  {f.nickname || "stranger"}
+                  {country && <span title={country.name}>{country.flag}</span>}
+                </p>
+                <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                  friends since {new Date(f.since).toLocaleDateString()}
+                </p>
+              </div>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => onRemove(f.clientId)}
+                title="Remove friend"
+                className="h-9 w-9 text-muted-foreground hover:text-destructive"
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </div>
+          );
+        })}
+      </div>
+    </div>
   );
 }
