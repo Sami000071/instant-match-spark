@@ -11,6 +11,7 @@ import {
 import { addBlocked } from "@/lib/blocks";
 import { COUNTRIES, findCountry } from "@/lib/countries";
 import {
+  addFriendFn,
   blockPartnerFn,
   createAvatarUploadUrlFn,
   decideFn,
@@ -19,6 +20,8 @@ import {
   joinQueueFn,
   leaveQueueFn,
   leaveSessionFn,
+  listFriendsFn,
+  removeFriendFn,
   reportPartnerFn,
   sendMessageFn,
 } from "@/server/matchmaking.functions";
