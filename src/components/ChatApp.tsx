@@ -523,13 +523,30 @@ export default function ChatApp() {
       <div className="pointer-events-none absolute -bottom-40 -right-40 h-96 w-96 rounded-full bg-[var(--neon-cyan)] opacity-20 blur-3xl animate-blob [animation-delay:-6s]" />
 
       <main className="relative mx-auto flex min-h-screen max-w-3xl flex-col px-4 py-6">
-        <Header />
+        <Header
+          onHome={stage === "home" || stage === "intro" ? undefined : goHome}
+          onFriends={stage === "intro" ? undefined : openFriends}
+          friendsCount={friends.length}
+        />
         <div className="flex flex-1 items-center justify-center">
+          {stage === "intro" && (
+            <IntroScreen
+              onStart={() => setStage("home")}
+              onFriends={openFriends}
+            />
+          )}
           {stage === "home" && (
-            <HomeScreen initial={profile} onStart={startMatching} />
+            <HomeScreen
+              initial={profile}
+              onStart={startMatching}
+              onBackToIntro={() => setStage("intro")}
+            />
           )}
           {stage === "matching" && (
-            <MatchingScreen onCancel={onCancelMatching} />
+            <MatchingScreen
+              onCancel={onCancelMatching}
+              onReturnHome={onReturnHomeFromMatching}
+            />
           )}
           {stage === "deciding" && session && (
             <DecisionScreen
@@ -537,6 +554,7 @@ export default function ChatApp() {
               clientId={clientIdRef.current}
               now={now}
               onDecide={onDecide}
+              onReturnHome={onReturnHomeFromDeciding}
             />
           )}
           {stage === "chatting" && session && (
@@ -552,11 +570,21 @@ export default function ChatApp() {
               onSkipNext={onSkipNext}
               onReport={() => setReportOpen(true)}
               onBlock={onBlock}
+              onAddFriend={onAddFriend}
+              friendStatus={friendStatus}
               partnerTyping={partnerTyping}
             />
           )}
           {stage === "ended" && (
             <EndedScreen reason={endedReason} />
+          )}
+          {stage === "friends" && (
+            <FriendsScreen
+              friends={friends}
+              onBack={() => setStage(profile.nickname ? "home" : "intro")}
+              onRemove={onRemoveFriend}
+              onRefresh={refreshFriends}
+            />
           )}
         </div>
       </main>
