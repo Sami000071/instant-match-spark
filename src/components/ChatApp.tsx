@@ -1592,16 +1592,32 @@ function FriendsScreen({
               key={f.clientId}
               className="flex items-center gap-3 rounded-xl bg-background/40 p-3"
             >
-              <Avatar nickname={f.nickname || "?"} avatarUrl={f.avatarUrl} small />
-              <div className="min-w-0 flex-1">
-                <p className="flex items-center gap-1.5 truncate text-sm font-bold">
-                  {f.nickname || "stranger"}
-                  {country && <span title={country.name}>{country.flag}</span>}
-                </p>
-                <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
-                  friends since {new Date(f.since).toLocaleDateString()}
-                </p>
-              </div>
+              <button
+                type="button"
+                onClick={() => onOpenChat(f)}
+                className="flex min-w-0 flex-1 items-center gap-3 text-left"
+                title="Open chat"
+              >
+                <Avatar nickname={f.nickname || "?"} avatarUrl={f.avatarUrl} small />
+                <div className="min-w-0 flex-1">
+                  <p className="flex items-center gap-1.5 truncate text-sm font-bold">
+                    {f.nickname || "stranger"}
+                    {country && <span title={country.name}>{country.flag}</span>}
+                  </p>
+                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                    friends since {new Date(f.since).toLocaleDateString()}
+                  </p>
+                </div>
+              </button>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => onOpenChat(f)}
+                title="Chat"
+                className="h-9 w-9 text-muted-foreground hover:text-[var(--neon-pink)]"
+              >
+                <MessageCircle className="h-4 w-4" />
+              </Button>
               <Button
                 variant="ghost"
                 size="icon"
