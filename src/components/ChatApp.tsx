@@ -20,9 +20,11 @@ import {
   joinQueueFn,
   leaveQueueFn,
   leaveSessionFn,
+  listFriendMessagesFn,
   listFriendsFn,
   removeFriendFn,
   reportPartnerFn,
+  sendFriendMessageFn,
   sendMessageFn,
 } from "@/server/matchmaking.functions";
 import { Button } from "@/components/ui/button";
