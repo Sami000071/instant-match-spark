@@ -154,3 +154,23 @@ export const removeFriendFn = createServerFn({ method: "POST" })
     await removeFriend(data.clientId, data.otherId);
     return { ok: true };
   });
+
+export const sendFriendMessageFn = createServerFn({ method: "POST" })
+  .inputValidator(
+    z.object({
+      clientId: uuid,
+      otherId: uuid,
+      content: z.string().trim().min(1).max(1000),
+    }).parse,
+  )
+  .handler(async ({ data }) => {
+    await sendFriendMessage(data.clientId, data.otherId, data.content);
+    return { ok: true };
+  });
+
+export const listFriendMessagesFn = createServerFn({ method: "POST" })
+  .inputValidator(z.object({ clientId: uuid, otherId: uuid }).parse)
+  .handler(async ({ data }) => {
+    const messages = await listFriendMessages(data.clientId, data.otherId);
+    return { messages };
+  });
