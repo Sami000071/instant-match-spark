@@ -121,6 +121,7 @@ export default function ChatApp() {
   const [endedReason, setEndedReason] = useState<string | null>(null);
   const [now, setNow] = useState(() => Date.now());
   const [partnerTyping, setPartnerTyping] = useState(false);
+  const [incomingFriendRequest, setIncomingFriendRequest] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
   const [friendStatus, setFriendStatus] = useState<"idle" | "pending" | "mutual">("idle");
   const [friends, setFriends] = useState<Friend[]>([]);
@@ -142,21 +143,20 @@ export default function ChatApp() {
   const listFriendsCall = useServerFn(listFriendsFn);
   const removeFriendCall = useServerFn(removeFriendFn);
 
-  // hydrate client id + profile, then attempt reconnect
+  // hydrate client id + profile. Always show intro first — users must click
+  // Get started themselves. Only auto-reconnect if there's an ongoing chat.
   useEffect(() => {
     clientIdRef.current = getClientId();
     const p = loadProfile();
-    if (p) {
-      setProfile(p);
-      // Returning user with profile already → skip the intro landing
-      setStage("home");
-    }
-    // Reconnect to active session if any
+    if (p) setProfile(p);
+    // Reconnect ONLY to an in-progress chat (not a stale deciding session).
     findActive({ data: { clientId: clientIdRef.current } })
       .then(({ session: s }) => {
         if (!s) return;
-        setSession(s as SessionRow);
-        setStage(s.status === "chatting" ? "chatting" : "deciding");
+        if (s.status === "chatting") {
+          setSession(s as SessionRow);
+          setStage("chatting");
+        }
       })
       .catch(() => {});
   }, [findActive]);
@@ -164,6 +164,7 @@ export default function ChatApp() {
   // Reset add-friend state whenever the session changes
   useEffect(() => {
     setFriendStatus("idle");
+    setIncomingFriendRequest(false);
   }, [session?.id]);
 
   const refreshFriends = async () => {
@@ -179,7 +180,15 @@ export default function ChatApp() {
 
   async function onAddFriend() {
     if (!session) return;
+    const wasIncoming = incomingFriendRequest;
     setFriendStatus("pending");
+    setIncomingFriendRequest(false);
+    // Notify partner so they see an Accept/Decline prompt
+    typingChannelRef.current?.send({
+      type: "broadcast",
+      event: "friend-request",
+      payload: { from: clientIdRef.current },
+    });
     try {
       const res = await addFriendCall({
         data: {
@@ -191,10 +200,21 @@ export default function ChatApp() {
       if (res.mutual) {
         setFriendStatus("mutual");
         refreshFriends();
+      } else if (wasIncoming) {
+        // Edge case — partner add hadn't been recorded yet; keep pending
       }
     } catch {
       setFriendStatus("idle");
     }
+  }
+
+  function onDeclineFriendRequest() {
+    setIncomingFriendRequest(false);
+    typingChannelRef.current?.send({
+      type: "broadcast",
+      event: "friend-decline",
+      payload: { from: clientIdRef.current },
+    });
   }
 
   async function onRemoveFriend(otherId: string) {
@@ -342,6 +362,16 @@ export default function ChatApp() {
       setPartnerTyping(true);
       if (typingTimer) clearTimeout(typingTimer);
       typingTimer = setTimeout(() => setPartnerTyping(false), 2500);
+    });
+    ch.on("broadcast", { event: "friend-request" }, (msg) => {
+      const from = (msg.payload as { from?: string })?.from;
+      if (!from || from === cid) return;
+      setIncomingFriendRequest(true);
+    });
+    ch.on("broadcast", { event: "friend-decline" }, (msg) => {
+      const from = (msg.payload as { from?: string })?.from;
+      if (!from || from === cid) return;
+      setFriendStatus("idle");
     });
     ch.subscribe();
     typingChannelRef.current = ch;
@@ -571,6 +601,8 @@ export default function ChatApp() {
               onReport={() => setReportOpen(true)}
               onBlock={onBlock}
               onAddFriend={onAddFriend}
+              onDeclineFriend={onDeclineFriendRequest}
+              incomingFriendRequest={incomingFriendRequest}
               friendStatus={friendStatus}
               partnerTyping={partnerTyping}
             />
@@ -1021,6 +1053,8 @@ function ChatScreen({
   onBlock,
   partnerTyping,
   onAddFriend,
+  onDeclineFriend,
+  incomingFriendRequest,
   friendStatus,
 }: {
   session: SessionRow;
@@ -1036,6 +1070,8 @@ function ChatScreen({
   onBlock: () => void;
   partnerTyping: boolean;
   onAddFriend: () => void;
+  onDeclineFriend: () => void;
+  incomingFriendRequest: boolean;
   friendStatus: "idle" | "pending" | "mutual";
 }) {
   const isA = session.user_a_client_id === clientId;
@@ -1135,6 +1171,33 @@ function ChatScreen({
           </Button>
         </div>
       </div>
+
+      {incomingFriendRequest && friendStatus === "idle" && (
+        <div className="flex items-center gap-3 border-b border-border bg-[var(--neon-pink)]/10 px-3 py-2.5">
+          <UserPlus className="h-4 w-4 shrink-0 text-[var(--neon-pink)]" />
+          <p className="flex-1 text-xs font-semibold">
+            {(session.user_a_client_id === clientId
+              ? session.user_b_nickname
+              : session.user_a_nickname)}{" "}
+            wants to add you as a friend
+          </p>
+          <Button
+            size="sm"
+            onClick={onAddFriend}
+            className="h-7 bg-[var(--gradient-accent)] px-3 text-xs font-bold text-background hover:opacity-90"
+          >
+            Accept
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={onDeclineFriend}
+            className="h-7 px-2 text-xs text-muted-foreground hover:text-destructive"
+          >
+            Decline
+          </Button>
+        </div>
+      )}
 
       <div ref={scrollRef} className="flex-1 overflow-y-auto">
         <div className="flex flex-col gap-2 p-4">
@@ -1417,15 +1480,16 @@ function IntroScreen({
       <div className="mb-8 flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
         <Button
           onClick={onStart}
-          className="h-14 w-full max-w-xs bg-[var(--gradient-accent)] text-base font-bold text-background hover:opacity-90 glow-pink sm:w-auto sm:px-10"
+          variant="outline"
+          className="h-14 w-full max-w-xs gap-2 border-[var(--neon-pink)]/40 bg-transparent text-base font-bold hover:bg-[var(--neon-pink)]/10 sm:w-auto sm:px-10"
         >
-          <Sparkles className="mr-2 h-5 w-5" />
+          <Sparkles className="h-5 w-5 text-[var(--neon-pink)]" />
           Get started
         </Button>
         <Button
           onClick={onFriends}
           variant="outline"
-          className="h-14 w-full max-w-xs gap-2 border-[var(--neon-pink)]/40 bg-transparent text-base font-bold sm:w-auto sm:px-8"
+          className="h-14 w-full max-w-xs gap-2 border-[var(--neon-pink)]/40 bg-transparent text-base font-bold hover:bg-[var(--neon-pink)]/10 sm:w-auto sm:px-8"
         >
           <Users className="h-5 w-5" />
           My friends
