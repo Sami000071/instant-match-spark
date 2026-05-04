@@ -363,6 +363,16 @@ export default function ChatApp() {
       if (typingTimer) clearTimeout(typingTimer);
       typingTimer = setTimeout(() => setPartnerTyping(false), 2500);
     });
+    ch.on("broadcast", { event: "friend-request" }, (msg) => {
+      const from = (msg.payload as { from?: string })?.from;
+      if (!from || from === cid) return;
+      setIncomingFriendRequest(true);
+    });
+    ch.on("broadcast", { event: "friend-decline" }, (msg) => {
+      const from = (msg.payload as { from?: string })?.from;
+      if (!from || from === cid) return;
+      setFriendStatus("idle");
+    });
     ch.subscribe();
     typingChannelRef.current = ch;
     return () => {
