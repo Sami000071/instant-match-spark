@@ -180,7 +180,15 @@ export default function ChatApp() {
 
   async function onAddFriend() {
     if (!session) return;
+    const wasIncoming = incomingFriendRequest;
     setFriendStatus("pending");
+    setIncomingFriendRequest(false);
+    // Notify partner so they see an Accept/Decline prompt
+    typingChannelRef.current?.send({
+      type: "broadcast",
+      event: "friend-request",
+      payload: { from: clientIdRef.current },
+    });
     try {
       const res = await addFriendCall({
         data: {
@@ -192,10 +200,21 @@ export default function ChatApp() {
       if (res.mutual) {
         setFriendStatus("mutual");
         refreshFriends();
+      } else if (wasIncoming) {
+        // Edge case — partner add hadn't been recorded yet; keep pending
       }
     } catch {
       setFriendStatus("idle");
     }
+  }
+
+  function onDeclineFriendRequest() {
+    setIncomingFriendRequest(false);
+    typingChannelRef.current?.send({
+      type: "broadcast",
+      event: "friend-decline",
+      payload: { from: clientIdRef.current },
+    });
   }
 
   async function onRemoveFriend(otherId: string) {
