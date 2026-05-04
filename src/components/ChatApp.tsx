@@ -1053,6 +1053,8 @@ function ChatScreen({
   onBlock,
   partnerTyping,
   onAddFriend,
+  onDeclineFriend,
+  incomingFriendRequest,
   friendStatus,
 }: {
   session: SessionRow;
@@ -1068,6 +1070,8 @@ function ChatScreen({
   onBlock: () => void;
   partnerTyping: boolean;
   onAddFriend: () => void;
+  onDeclineFriend: () => void;
+  incomingFriendRequest: boolean;
   friendStatus: "idle" | "pending" | "mutual";
 }) {
   const isA = session.user_a_client_id === clientId;
