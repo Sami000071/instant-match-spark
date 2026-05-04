@@ -20,9 +20,11 @@ import {
   joinQueueFn,
   leaveQueueFn,
   leaveSessionFn,
+  listFriendMessagesFn,
   listFriendsFn,
   removeFriendFn,
   reportPartnerFn,
+  sendFriendMessageFn,
   sendMessageFn,
 } from "@/server/matchmaking.functions";
 import { Button } from "@/components/ui/button";
@@ -69,7 +71,7 @@ import {
   Clock,
 } from "lucide-react";
 
-type Stage = "intro" | "home" | "matching" | "deciding" | "chatting" | "ended" | "friends";
+type Stage = "intro" | "home" | "matching" | "deciding" | "chatting" | "ended" | "friends" | "friend-chat";
 
 type Friend = {
   clientId: string;
@@ -125,6 +127,7 @@ export default function ChatApp() {
   const [reportOpen, setReportOpen] = useState(false);
   const [friendStatus, setFriendStatus] = useState<"idle" | "pending" | "mutual">("idle");
   const [friends, setFriends] = useState<Friend[]>([]);
+  const [activeFriend, setActiveFriend] = useState<Friend | null>(null);
   const clientIdRef = useRef<string>("");
   const typingChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const lastTypingSentRef = useRef<number>(0);
@@ -616,6 +619,20 @@ export default function ChatApp() {
               onBack={() => setStage(profile.nickname ? "home" : "intro")}
               onRemove={onRemoveFriend}
               onRefresh={refreshFriends}
+              onOpenChat={(f) => {
+                setActiveFriend(f);
+                setStage("friend-chat");
+              }}
+            />
+          )}
+          {stage === "friend-chat" && activeFriend && (
+            <FriendChatScreen
+              friend={activeFriend}
+              clientId={clientIdRef.current}
+              onBack={() => {
+                setActiveFriend(null);
+                setStage("friends");
+              }}
             />
           )}
         </div>
@@ -856,9 +873,10 @@ function HomeScreen({
               avatarUrl,
             })
           }
-          className="h-14 w-full bg-[var(--gradient-accent)] text-base font-bold text-background hover:opacity-90 glow-pink"
+          variant="outline"
+          className="h-14 w-full gap-2 border-[var(--neon-pink)]/40 bg-transparent text-base font-bold hover:bg-[var(--neon-pink)]/10"
         >
-          <Sparkles className="mr-2 h-5 w-5" />
+          <Sparkles className="h-5 w-5 text-[var(--neon-pink)]" />
           Start Chat
         </Button>
         <p className="text-center text-[10px] text-muted-foreground">
@@ -1183,8 +1201,9 @@ function ChatScreen({
           </p>
           <Button
             size="sm"
+            variant="outline"
             onClick={onAddFriend}
-            className="h-7 bg-[var(--gradient-accent)] px-3 text-xs font-bold text-background hover:opacity-90"
+            className="h-7 gap-1 border-[var(--neon-pink)]/40 bg-transparent px-3 text-xs font-bold hover:bg-[var(--neon-pink)]/10"
           >
             Accept
           </Button>
@@ -1524,11 +1543,13 @@ function FriendsScreen({
   onBack,
   onRemove,
   onRefresh,
+  onOpenChat,
 }: {
   friends: Friend[];
   onBack: () => void;
   onRemove: (id: string) => void;
   onRefresh: () => void;
+  onOpenChat: (f: Friend) => void;
 }) {
   useEffect(() => {
     onRefresh();
@@ -1571,16 +1592,32 @@ function FriendsScreen({
               key={f.clientId}
               className="flex items-center gap-3 rounded-xl bg-background/40 p-3"
             >
-              <Avatar nickname={f.nickname || "?"} avatarUrl={f.avatarUrl} small />
-              <div className="min-w-0 flex-1">
-                <p className="flex items-center gap-1.5 truncate text-sm font-bold">
-                  {f.nickname || "stranger"}
-                  {country && <span title={country.name}>{country.flag}</span>}
-                </p>
-                <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
-                  friends since {new Date(f.since).toLocaleDateString()}
-                </p>
-              </div>
+              <button
+                type="button"
+                onClick={() => onOpenChat(f)}
+                className="flex min-w-0 flex-1 items-center gap-3 text-left"
+                title="Open chat"
+              >
+                <Avatar nickname={f.nickname || "?"} avatarUrl={f.avatarUrl} small />
+                <div className="min-w-0 flex-1">
+                  <p className="flex items-center gap-1.5 truncate text-sm font-bold">
+                    {f.nickname || "stranger"}
+                    {country && <span title={country.name}>{country.flag}</span>}
+                  </p>
+                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                    friends since {new Date(f.since).toLocaleDateString()}
+                  </p>
+                </div>
+              </button>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => onOpenChat(f)}
+                title="Chat"
+                className="h-9 w-9 text-muted-foreground hover:text-[var(--neon-pink)]"
+              >
+                <MessageCircle className="h-4 w-4" />
+              </Button>
               <Button
                 variant="ghost"
                 size="icon"
@@ -1593,6 +1630,197 @@ function FriendsScreen({
             </div>
           );
         })}
+      </div>
+    </div>
+  );
+}
+
+// ─── Friend Chat ───────────────────────────────────────────────────────────
+type FriendMessage = {
+  id: string;
+  pair_key: string;
+  from_client_id: string;
+  to_client_id: string;
+  content: string;
+  created_at: string;
+};
+
+function FriendChatScreen({
+  friend,
+  clientId,
+  onBack,
+}: {
+  friend: Friend;
+  clientId: string;
+  onBack: () => void;
+}) {
+  const [messages, setMessages] = useState<FriendMessage[]>([]);
+  const [draft, setDraft] = useState("");
+  const [emojiOpen, setEmojiOpen] = useState(false);
+  const sendFn = useServerFn(sendFriendMessageFn);
+  const listFn = useServerFn(listFriendMessagesFn);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const country = useMemo(() => findCountry(friend.country), [friend.country]);
+
+  const pairKey = useMemo(() => {
+    const [a, b] = clientId < friend.clientId
+      ? [clientId, friend.clientId]
+      : [friend.clientId, clientId];
+    return `${a}:${b}`;
+  }, [clientId, friend.clientId]);
+
+  // initial load
+  useEffect(() => {
+    listFn({ data: { clientId, otherId: friend.clientId } })
+      .then((res) => setMessages(res.messages as FriendMessage[]))
+      .catch(() => {});
+  }, [clientId, friend.clientId, listFn]);
+
+  // realtime
+  useEffect(() => {
+    const ch = supabase
+      .channel(`friend-msgs-${pairKey}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "friend_messages",
+          filter: `pair_key=eq.${pairKey}`,
+        },
+        (payload) => {
+          setMessages((m) => {
+            const next = payload.new as FriendMessage;
+            if (m.some((x) => x.id === next.id)) return m;
+            return [...m, next];
+          });
+        },
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(ch);
+    };
+  }, [pairKey]);
+
+  useEffect(() => {
+    scrollRef.current?.scrollTo({
+      top: scrollRef.current.scrollHeight,
+      behavior: "smooth",
+    });
+  }, [messages]);
+
+  async function onSend() {
+    const content = draft.trim();
+    if (!content) return;
+    setDraft("");
+    try {
+      await sendFn({
+        data: { clientId, otherId: friend.clientId, content },
+      });
+    } catch {
+      setDraft(content);
+    }
+  }
+
+  return (
+    <div className="flex h-[80vh] w-full max-w-md animate-fade-up flex-col overflow-hidden rounded-2xl border border-border bg-[var(--gradient-card)] shadow-2xl">
+      <div className="flex items-center gap-3 border-b border-border px-3 py-3">
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={onBack}
+          className="h-9 w-9 text-muted-foreground hover:text-foreground"
+          title="Back to friends"
+        >
+          <ArrowLeft className="h-4 w-4" />
+        </Button>
+        <Avatar nickname={friend.nickname || "?"} avatarUrl={friend.avatarUrl} small />
+        <div className="min-w-0 flex-1">
+          <p className="flex items-center gap-1.5 truncate text-sm font-bold">
+            {friend.nickname || "friend"}
+            {country && <span title={country.name}>{country.flag}</span>}
+          </p>
+          <p className="flex items-center gap-1 text-[10px] uppercase tracking-wider text-[var(--neon-lime)]">
+            <ShieldCheck className="h-3 w-3" /> friend
+          </p>
+        </div>
+      </div>
+
+      <div ref={scrollRef} className="flex-1 overflow-y-auto">
+        <div className="flex flex-col gap-2 p-4">
+          {messages.length === 0 && (
+            <p className="py-8 text-center text-xs text-muted-foreground">
+              No messages yet. Say hi 👋
+            </p>
+          )}
+          {messages.map((m) => {
+            const mine = m.from_client_id === clientId;
+            return (
+              <div
+                key={m.id}
+                className={
+                  "max-w-[80%] rounded-2xl px-3.5 py-2 text-sm leading-snug " +
+                  (mine
+                    ? "ml-auto rounded-br-sm bg-[var(--gradient-accent)] text-white font-medium drop-shadow-sm"
+                    : "mr-auto rounded-bl-sm bg-secondary text-foreground")
+                }
+              >
+                {m.content}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="relative flex items-center gap-2 border-t border-border p-3">
+        {emojiOpen && (
+          <div className="absolute bottom-[4.25rem] left-3 grid grid-cols-7 gap-1 rounded-xl border border-border bg-popover p-2 shadow-2xl">
+            {CHAT_EMOJIS.map((emoji) => (
+              <button
+                key={emoji}
+                type="button"
+                onClick={() => {
+                  setDraft(`${draft}${emoji}`);
+                  setEmojiOpen(false);
+                }}
+                className="flex h-8 w-8 items-center justify-center rounded-lg text-lg hover:bg-secondary"
+                aria-label={`Add ${emoji}`}
+              >
+                {emoji}
+              </button>
+            ))}
+          </div>
+        )}
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          onClick={() => setEmojiOpen((o) => !o)}
+          className="h-11 w-11 shrink-0 text-muted-foreground hover:text-[var(--neon-pink)]"
+          title="Emoji"
+        >
+          <Smile className="h-5 w-5" />
+        </Button>
+        <Input
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && !e.shiftKey) {
+              e.preventDefault();
+              onSend();
+            }
+          }}
+          placeholder="Type a message…"
+          maxLength={1000}
+          className="h-11 bg-input/60"
+        />
+        <Button
+          onClick={onSend}
+          disabled={!draft.trim()}
+          className="h-11 bg-[var(--gradient-accent)] text-background hover:opacity-90"
+        >
+          <Send className="h-4 w-4" />
+        </Button>
       </div>
     </div>
   );

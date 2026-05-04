@@ -425,6 +425,49 @@ export async function removeFriend(clientId: string, otherId: string) {
     .eq("client_id_b", idB);
 }
 
+async function assertFriendship(a: string, b: string) {
+  const [idA, idB] = pairOrder(a, b);
+  const { data } = await supabaseAdmin
+    .from("friendships")
+    .select("id")
+    .eq("client_id_a", idA)
+    .eq("client_id_b", idB)
+    .maybeSingle();
+  if (!data) throw new Error("Not friends");
+  return `${idA}:${idB}`;
+}
+
+export async function sendFriendMessage(
+  fromClientId: string,
+  toClientId: string,
+  content: string,
+) {
+  const pairKey = await assertFriendship(fromClientId, toClientId);
+  const trimmed = content.trim().slice(0, 1000);
+  if (!trimmed) throw new Error("Empty message");
+  const { error } = await supabaseAdmin.from("friend_messages").insert({
+    pair_key: pairKey,
+    from_client_id: fromClientId,
+    to_client_id: toClientId,
+    content: trimmed,
+  });
+  if (error) throw error;
+}
+
+export async function listFriendMessages(
+  clientId: string,
+  otherId: string,
+) {
+  const pairKey = await assertFriendship(clientId, otherId);
+  const { data } = await supabaseAdmin
+    .from("friend_messages")
+    .select("*")
+    .eq("pair_key", pairKey)
+    .order("created_at", { ascending: true })
+    .limit(500);
+  return data ?? [];
+}
+
 // Generate a signed upload URL for an avatar file.
 export async function createAvatarUploadUrl(clientId: string, ext: string) {
   const safeExt = /^(png|jpe?g|webp|gif)$/i.test(ext) ? ext.toLowerCase() : "jpg";

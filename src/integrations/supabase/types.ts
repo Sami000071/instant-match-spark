@@ -35,6 +35,33 @@ export type Database = {
         }
         Relationships: []
       }
+      friend_messages: {
+        Row: {
+          content: string
+          created_at: string
+          from_client_id: string
+          id: string
+          pair_key: string
+          to_client_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          from_client_id: string
+          id?: string
+          pair_key: string
+          to_client_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          from_client_id?: string
+          id?: string
+          pair_key?: string
+          to_client_id?: string
+        }
+        Relationships: []
+      }
       friend_requests: {
         Row: {
           created_at: string
