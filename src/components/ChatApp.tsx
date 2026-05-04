@@ -1184,8 +1184,9 @@ function ChatScreen({
           </p>
           <Button
             size="sm"
+            variant="outline"
             onClick={onAddFriend}
-            className="h-7 bg-[var(--gradient-accent)] px-3 text-xs font-bold text-background hover:opacity-90"
+            className="h-7 gap-1 border-[var(--neon-pink)]/40 bg-transparent px-3 text-xs font-bold hover:bg-[var(--neon-pink)]/10"
           >
             Accept
           </Button>
