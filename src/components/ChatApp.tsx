@@ -71,7 +71,7 @@ import {
   Clock,
 } from "lucide-react";
 
-type Stage = "intro" | "home" | "matching" | "deciding" | "chatting" | "ended" | "friends";
+type Stage = "intro" | "home" | "matching" | "deciding" | "chatting" | "ended" | "friends" | "friend-chat";
 
 type Friend = {
   clientId: string;
