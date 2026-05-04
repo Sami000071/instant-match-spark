@@ -1543,11 +1543,13 @@ function FriendsScreen({
   onBack,
   onRemove,
   onRefresh,
+  onOpenChat,
 }: {
   friends: Friend[];
   onBack: () => void;
   onRemove: (id: string) => void;
   onRefresh: () => void;
+  onOpenChat: (f: Friend) => void;
 }) {
   useEffect(() => {
     onRefresh();
