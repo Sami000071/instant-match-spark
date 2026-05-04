@@ -601,6 +601,8 @@ export default function ChatApp() {
               onReport={() => setReportOpen(true)}
               onBlock={onBlock}
               onAddFriend={onAddFriend}
+              onDeclineFriend={onDeclineFriendRequest}
+              incomingFriendRequest={incomingFriendRequest}
               friendStatus={friendStatus}
               partnerTyping={partnerTyping}
             />
