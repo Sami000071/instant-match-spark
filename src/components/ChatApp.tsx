@@ -619,6 +619,20 @@ export default function ChatApp() {
               onBack={() => setStage(profile.nickname ? "home" : "intro")}
               onRemove={onRemoveFriend}
               onRefresh={refreshFriends}
+              onOpenChat={(f) => {
+                setActiveFriend(f);
+                setStage("friend-chat");
+              }}
+            />
+          )}
+          {stage === "friend-chat" && activeFriend && (
+            <FriendChatScreen
+              friend={activeFriend}
+              clientId={clientIdRef.current}
+              onBack={() => {
+                setActiveFriend(null);
+                setStage("friends");
+              }}
             />
           )}
         </div>
