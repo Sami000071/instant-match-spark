@@ -10,9 +10,11 @@ import {
   joinQueueAndTryMatch,
   leaveQueue,
   leaveSession,
+  listFriendMessages,
   listFriends,
   removeFriend,
   reportPartner,
+  sendFriendMessage,
   sendMessage,
 } from "./matchmaking.server";
 
