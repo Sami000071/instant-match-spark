@@ -142,21 +142,20 @@ export default function ChatApp() {
   const listFriendsCall = useServerFn(listFriendsFn);
   const removeFriendCall = useServerFn(removeFriendFn);
 
-  // hydrate client id + profile, then attempt reconnect
+  // hydrate client id + profile. Always show intro first — users must click
+  // Get started themselves. Only auto-reconnect if there's an ongoing chat.
   useEffect(() => {
     clientIdRef.current = getClientId();
     const p = loadProfile();
-    if (p) {
-      setProfile(p);
-      // Returning user with profile already → skip the intro landing
-      setStage("home");
-    }
-    // Reconnect to active session if any
+    if (p) setProfile(p);
+    // Reconnect ONLY to an in-progress chat (not a stale deciding session).
     findActive({ data: { clientId: clientIdRef.current } })
       .then(({ session: s }) => {
         if (!s) return;
-        setSession(s as SessionRow);
-        setStage(s.status === "chatting" ? "chatting" : "deciding");
+        if (s.status === "chatting") {
+          setSession(s as SessionRow);
+          setStage("chatting");
+        }
       })
       .catch(() => {});
   }, [findActive]);
