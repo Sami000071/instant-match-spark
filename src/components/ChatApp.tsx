@@ -127,6 +127,7 @@ export default function ChatApp() {
   const [reportOpen, setReportOpen] = useState(false);
   const [friendStatus, setFriendStatus] = useState<"idle" | "pending" | "mutual">("idle");
   const [friends, setFriends] = useState<Friend[]>([]);
+  const [activeFriend, setActiveFriend] = useState<Friend | null>(null);
   const clientIdRef = useRef<string>("");
   const typingChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const lastTypingSentRef = useRef<number>(0);
