@@ -1172,6 +1172,33 @@ function ChatScreen({
         </div>
       </div>
 
+      {incomingFriendRequest && friendStatus === "idle" && (
+        <div className="flex items-center gap-3 border-b border-border bg-[var(--neon-pink)]/10 px-3 py-2.5">
+          <UserPlus className="h-4 w-4 shrink-0 text-[var(--neon-pink)]" />
+          <p className="flex-1 text-xs font-semibold">
+            {(session.user_a_client_id === clientId
+              ? session.user_b_nickname
+              : session.user_a_nickname)}{" "}
+            wants to add you as a friend
+          </p>
+          <Button
+            size="sm"
+            onClick={onAddFriend}
+            className="h-7 bg-[var(--gradient-accent)] px-3 text-xs font-bold text-background hover:opacity-90"
+          >
+            Accept
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={onDeclineFriend}
+            className="h-7 px-2 text-xs text-muted-foreground hover:text-destructive"
+          >
+            Decline
+          </Button>
+        </div>
+      )}
+
       <div ref={scrollRef} className="flex-1 overflow-y-auto">
         <div className="flex flex-col gap-2 p-4">
           {messages.length === 0 && (
