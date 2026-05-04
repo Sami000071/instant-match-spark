@@ -1416,15 +1416,16 @@ function IntroScreen({
       <div className="mb-8 flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
         <Button
           onClick={onStart}
-          className="h-14 w-full max-w-xs bg-[var(--gradient-accent)] text-base font-bold text-background hover:opacity-90 glow-pink sm:w-auto sm:px-10"
+          variant="outline"
+          className="h-14 w-full max-w-xs gap-2 border-[var(--neon-pink)]/40 bg-transparent text-base font-bold hover:bg-[var(--neon-pink)]/10 sm:w-auto sm:px-10"
         >
-          <Sparkles className="mr-2 h-5 w-5" />
+          <Sparkles className="h-5 w-5 text-[var(--neon-pink)]" />
           Get started
         </Button>
         <Button
           onClick={onFriends}
           variant="outline"
-          className="h-14 w-full max-w-xs gap-2 border-[var(--neon-pink)]/40 bg-transparent text-base font-bold sm:w-auto sm:px-8"
+          className="h-14 w-full max-w-xs gap-2 border-[var(--neon-pink)]/40 bg-transparent text-base font-bold hover:bg-[var(--neon-pink)]/10 sm:w-auto sm:px-8"
         >
           <Users className="h-5 w-5" />
           My friends
