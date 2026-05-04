@@ -856,9 +856,10 @@ function HomeScreen({
               avatarUrl,
             })
           }
-          className="h-14 w-full bg-[var(--gradient-accent)] text-base font-bold text-background hover:opacity-90 glow-pink"
+          variant="outline"
+          className="h-14 w-full gap-2 border-[var(--neon-pink)]/40 bg-transparent text-base font-bold hover:bg-[var(--neon-pink)]/10"
         >
-          <Sparkles className="mr-2 h-5 w-5" />
+          <Sparkles className="h-5 w-5 text-[var(--neon-pink)]" />
           Start Chat
         </Button>
         <p className="text-center text-[10px] text-muted-foreground">
