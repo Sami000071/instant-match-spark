@@ -164,6 +164,7 @@ export default function ChatApp() {
   // Reset add-friend state whenever the session changes
   useEffect(() => {
     setFriendStatus("idle");
+    setIncomingFriendRequest(false);
   }, [session?.id]);
 
   const refreshFriends = async () => {
