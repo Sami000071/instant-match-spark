@@ -647,22 +647,28 @@ export default function ChatApp() {
 
       <main className="relative mx-auto flex min-h-screen max-w-3xl flex-col px-4 py-6">
         <Header
-          onHome={stage === "home" || stage === "intro" ? undefined : goHome}
-          onFriends={stage === "intro" ? undefined : openFriends}
+          onHome={stage === "home" || stage === "intro" || stage === "login" ? undefined : goHome}
+          onFriends={stage === "intro" || stage === "login" || !authUserId ? undefined : openFriends}
           friendsCount={friends.length}
         />
         <div className="flex flex-1 items-center justify-center">
           {stage === "intro" && (
-            <IntroScreen
-              onStart={() => setStage("home")}
-              onFriends={openFriends}
+            <IntroScreen onStart={handleGetStarted} />
+          )}
+          {stage === "login" && (
+            <LoginScreen
+              onSuccess={handleLoginSuccess}
+              onBack={() => setStage("intro")}
             />
           )}
           {stage === "home" && (
             <HomeScreen
               initial={profile}
               onStart={startMatching}
-              onBackToIntro={() => setStage("intro")}
+              onFriends={openFriends}
+              onLogout={handleLogout}
+              friendsCount={friends.length}
+              onSave={saveProfileToDb}
             />
           )}
           {stage === "matching" && (
