@@ -715,21 +715,32 @@ function Header({
 function HomeScreen({
   initial,
   onStart,
-  onBackToIntro,
+  onFriends,
+  onLogout,
+  friendsCount,
+  onSave,
 }: {
   initial: Profile;
   onStart: (p: Profile) => void;
-  onBackToIntro: () => void;
+  onFriends: () => void;
+  onLogout: () => void;
+  friendsCount: number;
+  onSave: (p: Profile) => Promise<void>;
 }) {
   const [nickname, setNickname] = useState(initial.nickname);
+  const [age, setAge] = useState<string>(initial.age != null ? String(initial.age) : "");
   const [country, setCountry] = useState(initial.country);
   const [gender, setGender] = useState<Profile["gender"]>(initial.gender);
   const [avatarUrl, setAvatarUrl] = useState(initial.avatarUrl);
   const [uploading, setUploading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const createUploadUrl = useServerFn(createAvatarUploadUrlFn);
 
-  const valid = nickname.trim().length >= 1 && nickname.trim().length <= 24;
+  const ageNum = Number.parseInt(age, 10);
+  const ageValid = Number.isFinite(ageNum) && ageNum >= 18 && ageNum <= 120;
+  const valid = nickname.trim().length >= 1 && nickname.trim().length <= 24 && ageValid;
 
   async function handleFile(file: File) {
     if (!file.type.startsWith("image/")) return;
@@ -758,15 +769,29 @@ function HomeScreen({
     }
   }
 
+  async function handleStart() {
+    if (!valid) return;
+    setError(null);
+    setSaving(true);
+    const p: Profile = {
+      nickname: nickname.trim(),
+      age: ageNum,
+      country,
+      gender,
+      avatarUrl,
+    };
+    try {
+      await onSave(p);
+      onStart(p);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not save profile");
+    } finally {
+      setSaving(false);
+    }
+  }
+
   return (
     <div className="w-full max-w-md animate-fade-up">
-      <button
-        type="button"
-        onClick={onBackToIntro}
-        className="mb-4 inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
-      >
-        <ArrowLeft className="h-3 w-3" /> Back
-      </button>
       <div className="mb-8 text-center">
         <h2 className="mb-3 text-5xl font-black leading-none tracking-tight md:text-6xl">
           Set up your <span className="text-gradient">profile</span>.
@@ -777,7 +802,6 @@ function HomeScreen({
       </div>
 
       <div className="space-y-5 rounded-2xl border border-border bg-[var(--gradient-card)] p-6 shadow-2xl">
-        {/* Avatar uploader */}
         <div className="flex items-center gap-4">
           <button
             type="button"
@@ -813,16 +837,33 @@ function HomeScreen({
           />
         </div>
 
-        <div className="space-y-2">
-          <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            Your nickname
-          </label>
-          <Input
-            value={nickname}
-            onChange={(e) => setNickname(e.target.value.slice(0, 24))}
-            placeholder="ghost42"
-            className="h-12 bg-input/60 text-base"
-          />
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-2">
+            <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              Nickname
+            </label>
+            <Input
+              value={nickname}
+              onChange={(e) => setNickname(e.target.value.slice(0, 24))}
+              placeholder="ghost42"
+              className="h-12 bg-input/60 text-base"
+            />
+          </div>
+          <div className="space-y-2">
+            <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              Age (18+)
+            </label>
+            <Input
+              type="number"
+              inputMode="numeric"
+              min={18}
+              max={120}
+              value={age}
+              onChange={(e) => setAge(e.target.value.replace(/\D/g, "").slice(0, 3))}
+              placeholder="18"
+              className="h-12 bg-input/60 text-base"
+            />
+          </div>
         </div>
 
         <div className="grid grid-cols-2 gap-3">
@@ -863,24 +904,46 @@ function HomeScreen({
           </div>
         </div>
 
+        {error && (
+          <p className="text-center text-xs text-destructive">{error}</p>
+        )}
+
         <Button
-          disabled={!valid || uploading}
-          onClick={() =>
-            onStart({
-              nickname: nickname.trim(),
-              country,
-              gender,
-              avatarUrl,
-            })
-          }
+          disabled={!valid || uploading || saving}
+          onClick={handleStart}
           variant="outline"
           className="h-14 w-full gap-2 border-[var(--neon-pink)]/40 bg-transparent text-base font-bold hover:bg-[var(--neon-pink)]/10"
         >
-          <Sparkles className="h-5 w-5 text-[var(--neon-pink)]" />
+          {saving ? <Loader2 className="h-5 w-5 animate-spin" /> : <Sparkles className="h-5 w-5 text-[var(--neon-pink)]" />}
           Start Chat
         </Button>
+
+        <div className="grid grid-cols-2 gap-3">
+          <Button
+            onClick={onFriends}
+            variant="outline"
+            className="h-12 gap-2 border-[var(--neon-pink)]/40 bg-transparent text-sm font-bold hover:bg-[var(--neon-pink)]/10"
+          >
+            <Users className="h-4 w-4" />
+            My friends
+            {friendsCount > 0 && (
+              <span className="rounded-full bg-[var(--neon-pink)]/20 px-2 text-[10px] font-bold text-[var(--neon-pink)]">
+                {friendsCount}
+              </span>
+            )}
+          </Button>
+          <Button
+            onClick={onLogout}
+            variant="outline"
+            className="h-12 gap-2 border-border/60 bg-transparent text-sm font-bold text-muted-foreground hover:text-foreground"
+          >
+            <LogOut className="h-4 w-4" />
+            Sign out
+          </Button>
+        </div>
+
         <p className="text-center text-[10px] text-muted-foreground">
-          Be kind. Reports & blocks keep the community safe.
+          Be kind. Reports & blocks keep the community safe. 18+ only.
         </p>
       </div>
     </div>
