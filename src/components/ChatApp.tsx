@@ -1511,10 +1511,8 @@ function ReportDialog({
 // ─── Intro / Landing ───────────────────────────────────────────────────────
 function IntroScreen({
   onStart,
-  onFriends,
 }: {
   onStart: () => void;
-  onFriends: () => void;
 }) {
   const features = [
     {
