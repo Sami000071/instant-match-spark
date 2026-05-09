@@ -1977,7 +1977,6 @@ function FriendChatScreen({
 }
 
 // ─── Login / Signup ────────────────────────────────────────────────────────
-import { lovable } from "@/integrations/lovable";
 
 function LoginScreen({
   onSuccess,
