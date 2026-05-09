@@ -42,6 +42,7 @@ export function loadProfile(): Profile | null {
     const p = JSON.parse(raw) as Partial<Profile>;
     return {
       nickname: p.nickname ?? "",
+      age: typeof p.age === "number" ? p.age : null,
       country: p.country ?? "",
       gender: (p.gender as Profile["gender"]) ?? "unspecified",
       avatarUrl: p.avatarUrl ?? "",
