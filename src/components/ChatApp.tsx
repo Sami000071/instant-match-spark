@@ -1559,7 +1559,7 @@ function IntroScreen({
         </p>
       </div>
 
-      <div className="mb-8 flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
+      <div className="mb-8 flex justify-center">
         <Button
           onClick={onStart}
           variant="outline"
@@ -1567,14 +1567,6 @@ function IntroScreen({
         >
           <Sparkles className="h-5 w-5 text-[var(--neon-pink)]" />
           Get started
-        </Button>
-        <Button
-          onClick={onFriends}
-          variant="outline"
-          className="h-14 w-full max-w-xs gap-2 border-[var(--neon-pink)]/40 bg-transparent text-base font-bold hover:bg-[var(--neon-pink)]/10 sm:w-auto sm:px-8"
-        >
-          <Users className="h-5 w-5" />
-          My friends
         </Button>
       </div>
 
