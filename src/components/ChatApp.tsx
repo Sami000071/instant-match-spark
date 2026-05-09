@@ -6,6 +6,7 @@ import {
   getClientId,
   loadProfile,
   saveProfile,
+  setClientId,
   type Profile,
 } from "@/lib/client-id";
 import { addBlocked } from "@/lib/blocks";
@@ -46,6 +47,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { lovable } from "@/integrations/lovable";
 
 import {
   Sparkles,
@@ -71,7 +73,7 @@ import {
   Clock,
 } from "lucide-react";
 
-type Stage = "intro" | "home" | "matching" | "deciding" | "chatting" | "ended" | "friends" | "friend-chat";
+
 
 type Friend = {
   clientId: string;
@@ -114,9 +116,22 @@ const REPORT_REASONS = [
 
 const CHAT_EMOJIS = ["😀", "😂", "😍", "😎", "😭", "😡", "👍", "👎", "❤️", "🔥", "✨", "🎉", "👋", "🙏"];
 
+type Stage =
+  | "intro"
+  | "login"
+  | "home"
+  | "matching"
+  | "deciding"
+  | "chatting"
+  | "ended"
+  | "friends"
+  | "friend-chat";
+
 export default function ChatApp() {
   const [stage, setStage] = useState<Stage>("intro");
   const [profile, setProfile] = useState<Profile>(EMPTY_PROFILE);
+  const [authUserId, setAuthUserId] = useState<string | null>(null);
+  const [authReady, setAuthReady] = useState(false);
   const [session, setSession] = useState<SessionRow | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [draft, setDraft] = useState("");
@@ -146,12 +161,71 @@ export default function ChatApp() {
   const listFriendsCall = useServerFn(listFriendsFn);
   const removeFriendCall = useServerFn(removeFriendFn);
 
-  // hydrate client id + profile. Always show intro first — users must click
-  // Get started themselves. Only auto-reconnect if there's an ongoing chat.
+  // Load DB profile for the signed-in user. Sets clientIdRef to the stable
+  // matching id stored in the profiles row.
+  async function hydrateProfileForUser(userId: string) {
+    const { data } = await supabase
+      .from("profiles")
+      .select("client_id, nickname, age, country, gender, avatar_url")
+      .eq("user_id", userId)
+      .maybeSingle();
+    if (data) {
+      clientIdRef.current = data.client_id as string;
+      setClientId(clientIdRef.current);
+      const p: Profile = {
+        nickname: data.nickname || "",
+        age: typeof data.age === "number" ? data.age : null,
+        country: data.country || "",
+        gender: (data.gender as Profile["gender"]) || "unspecified",
+        avatarUrl: data.avatar_url || "",
+      };
+      setProfile(p);
+      saveProfile(p);
+    }
+  }
+
+  async function saveProfileToDb(p: Profile) {
+    if (!authUserId) throw new Error("Not signed in");
+    if (p.age == null || p.age < 18) throw new Error("You must be 18 or older");
+    const { error } = await supabase
+      .from("profiles")
+      .update({
+        nickname: p.nickname,
+        age: p.age,
+        country: p.country,
+        gender: p.gender,
+        avatar_url: p.avatarUrl,
+      })
+      .eq("user_id", authUserId);
+    if (error) throw new Error(error.message);
+    setProfile(p);
+    saveProfile(p);
+  }
+
+  // Auth bootstrap: subscribe FIRST, then check existing session.
   useEffect(() => {
     clientIdRef.current = getClientId();
-    const p = loadProfile();
-    if (p) setProfile(p);
+    const cached = loadProfile();
+    if (cached) setProfile(cached);
+
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, s) => {
+      const uid = s?.user?.id ?? null;
+      setAuthUserId(uid);
+      if (uid) {
+        // hydrate after micro-task to avoid Supabase deadlocks
+        setTimeout(() => {
+          hydrateProfileForUser(uid).catch(() => {});
+        }, 0);
+      }
+    });
+
+    supabase.auth.getSession().then(({ data }) => {
+      const uid = data.session?.user?.id ?? null;
+      setAuthUserId(uid);
+      if (uid) hydrateProfileForUser(uid).catch(() => {});
+      setAuthReady(true);
+    });
+
     // Reconnect ONLY to an in-progress chat (not a stale deciding session).
     findActive({ data: { clientId: clientIdRef.current } })
       .then(({ session: s }) => {
@@ -162,7 +236,33 @@ export default function ChatApp() {
         }
       })
       .catch(() => {});
+
+    return () => sub.subscription.unsubscribe();
   }, [findActive]);
+
+  async function handleLogout() {
+    await supabase.auth.signOut();
+    setProfile(EMPTY_PROFILE);
+    setStage("intro");
+  }
+
+  function handleGetStarted() {
+    if (authUserId) setStage("home");
+    else setStage("login");
+  }
+
+  function handleLoginSuccess() {
+    setStage("home");
+    refreshFriends();
+  }
+
+  // After OAuth callback, auto-advance from intro/login to home and load friends.
+  useEffect(() => {
+    if (!authUserId) return;
+    if (stage === "intro" || stage === "login") setStage("home");
+    refreshFriends();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authUserId]);
 
   // Reset add-friend state whenever the session changes
   useEffect(() => {
@@ -557,22 +657,28 @@ export default function ChatApp() {
 
       <main className="relative mx-auto flex min-h-screen max-w-3xl flex-col px-4 py-6">
         <Header
-          onHome={stage === "home" || stage === "intro" ? undefined : goHome}
-          onFriends={stage === "intro" ? undefined : openFriends}
+          onHome={stage === "home" || stage === "intro" || stage === "login" ? undefined : goHome}
+          onFriends={stage === "intro" || stage === "login" || !authUserId ? undefined : openFriends}
           friendsCount={friends.length}
         />
         <div className="flex flex-1 items-center justify-center">
           {stage === "intro" && (
-            <IntroScreen
-              onStart={() => setStage("home")}
-              onFriends={openFriends}
+            <IntroScreen onStart={handleGetStarted} />
+          )}
+          {stage === "login" && (
+            <LoginScreen
+              onSuccess={handleLoginSuccess}
+              onBack={() => setStage("intro")}
             />
           )}
           {stage === "home" && (
             <HomeScreen
               initial={profile}
               onStart={startMatching}
-              onBackToIntro={() => setStage("intro")}
+              onFriends={openFriends}
+              onLogout={handleLogout}
+              friendsCount={friends.length}
+              onSave={saveProfileToDb}
             />
           )}
           {stage === "matching" && (
@@ -715,21 +821,32 @@ function Header({
 function HomeScreen({
   initial,
   onStart,
-  onBackToIntro,
+  onFriends,
+  onLogout,
+  friendsCount,
+  onSave,
 }: {
   initial: Profile;
   onStart: (p: Profile) => void;
-  onBackToIntro: () => void;
+  onFriends: () => void;
+  onLogout: () => void;
+  friendsCount: number;
+  onSave: (p: Profile) => Promise<void>;
 }) {
   const [nickname, setNickname] = useState(initial.nickname);
+  const [age, setAge] = useState<string>(initial.age != null ? String(initial.age) : "");
   const [country, setCountry] = useState(initial.country);
   const [gender, setGender] = useState<Profile["gender"]>(initial.gender);
   const [avatarUrl, setAvatarUrl] = useState(initial.avatarUrl);
   const [uploading, setUploading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const createUploadUrl = useServerFn(createAvatarUploadUrlFn);
 
-  const valid = nickname.trim().length >= 1 && nickname.trim().length <= 24;
+  const ageNum = Number.parseInt(age, 10);
+  const ageValid = Number.isFinite(ageNum) && ageNum >= 18 && ageNum <= 120;
+  const valid = nickname.trim().length >= 1 && nickname.trim().length <= 24 && ageValid;
 
   async function handleFile(file: File) {
     if (!file.type.startsWith("image/")) return;
@@ -758,15 +875,29 @@ function HomeScreen({
     }
   }
 
+  async function handleStart() {
+    if (!valid) return;
+    setError(null);
+    setSaving(true);
+    const p: Profile = {
+      nickname: nickname.trim(),
+      age: ageNum,
+      country,
+      gender,
+      avatarUrl,
+    };
+    try {
+      await onSave(p);
+      onStart(p);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not save profile");
+    } finally {
+      setSaving(false);
+    }
+  }
+
   return (
     <div className="w-full max-w-md animate-fade-up">
-      <button
-        type="button"
-        onClick={onBackToIntro}
-        className="mb-4 inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
-      >
-        <ArrowLeft className="h-3 w-3" /> Back
-      </button>
       <div className="mb-8 text-center">
         <h2 className="mb-3 text-5xl font-black leading-none tracking-tight md:text-6xl">
           Set up your <span className="text-gradient">profile</span>.
@@ -777,7 +908,6 @@ function HomeScreen({
       </div>
 
       <div className="space-y-5 rounded-2xl border border-border bg-[var(--gradient-card)] p-6 shadow-2xl">
-        {/* Avatar uploader */}
         <div className="flex items-center gap-4">
           <button
             type="button"
@@ -813,16 +943,33 @@ function HomeScreen({
           />
         </div>
 
-        <div className="space-y-2">
-          <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            Your nickname
-          </label>
-          <Input
-            value={nickname}
-            onChange={(e) => setNickname(e.target.value.slice(0, 24))}
-            placeholder="ghost42"
-            className="h-12 bg-input/60 text-base"
-          />
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-2">
+            <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              Nickname
+            </label>
+            <Input
+              value={nickname}
+              onChange={(e) => setNickname(e.target.value.slice(0, 24))}
+              placeholder="ghost42"
+              className="h-12 bg-input/60 text-base"
+            />
+          </div>
+          <div className="space-y-2">
+            <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              Age (18+)
+            </label>
+            <Input
+              type="number"
+              inputMode="numeric"
+              min={18}
+              max={120}
+              value={age}
+              onChange={(e) => setAge(e.target.value.replace(/\D/g, "").slice(0, 3))}
+              placeholder="18"
+              className="h-12 bg-input/60 text-base"
+            />
+          </div>
         </div>
 
         <div className="grid grid-cols-2 gap-3">
@@ -863,24 +1010,46 @@ function HomeScreen({
           </div>
         </div>
 
+        {error && (
+          <p className="text-center text-xs text-destructive">{error}</p>
+        )}
+
         <Button
-          disabled={!valid || uploading}
-          onClick={() =>
-            onStart({
-              nickname: nickname.trim(),
-              country,
-              gender,
-              avatarUrl,
-            })
-          }
+          disabled={!valid || uploading || saving}
+          onClick={handleStart}
           variant="outline"
           className="h-14 w-full gap-2 border-[var(--neon-pink)]/40 bg-transparent text-base font-bold hover:bg-[var(--neon-pink)]/10"
         >
-          <Sparkles className="h-5 w-5 text-[var(--neon-pink)]" />
+          {saving ? <Loader2 className="h-5 w-5 animate-spin" /> : <Sparkles className="h-5 w-5 text-[var(--neon-pink)]" />}
           Start Chat
         </Button>
+
+        <div className="grid grid-cols-2 gap-3">
+          <Button
+            onClick={onFriends}
+            variant="outline"
+            className="h-12 gap-2 border-[var(--neon-pink)]/40 bg-transparent text-sm font-bold hover:bg-[var(--neon-pink)]/10"
+          >
+            <Users className="h-4 w-4" />
+            My friends
+            {friendsCount > 0 && (
+              <span className="rounded-full bg-[var(--neon-pink)]/20 px-2 text-[10px] font-bold text-[var(--neon-pink)]">
+                {friendsCount}
+              </span>
+            )}
+          </Button>
+          <Button
+            onClick={onLogout}
+            variant="outline"
+            className="h-12 gap-2 border-border/60 bg-transparent text-sm font-bold text-muted-foreground hover:text-foreground"
+          >
+            <LogOut className="h-4 w-4" />
+            Sign out
+          </Button>
+        </div>
+
         <p className="text-center text-[10px] text-muted-foreground">
-          Be kind. Reports & blocks keep the community safe.
+          Be kind. Reports & blocks keep the community safe. 18+ only.
         </p>
       </div>
     </div>
@@ -1448,10 +1617,8 @@ function ReportDialog({
 // ─── Intro / Landing ───────────────────────────────────────────────────────
 function IntroScreen({
   onStart,
-  onFriends,
 }: {
   onStart: () => void;
-  onFriends: () => void;
 }) {
   const features = [
     {
@@ -1496,7 +1663,7 @@ function IntroScreen({
         </p>
       </div>
 
-      <div className="mb-8 flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
+      <div className="mb-8 flex justify-center">
         <Button
           onClick={onStart}
           variant="outline"
@@ -1504,14 +1671,6 @@ function IntroScreen({
         >
           <Sparkles className="h-5 w-5 text-[var(--neon-pink)]" />
           Get started
-        </Button>
-        <Button
-          onClick={onFriends}
-          variant="outline"
-          className="h-14 w-full max-w-xs gap-2 border-[var(--neon-pink)]/40 bg-transparent text-base font-bold hover:bg-[var(--neon-pink)]/10 sm:w-auto sm:px-8"
-        >
-          <Users className="h-5 w-5" />
-          My friends
         </Button>
       </div>
 
@@ -1821,6 +1980,168 @@ function FriendChatScreen({
         >
           <Send className="h-4 w-4" />
         </Button>
+      </div>
+    </div>
+  );
+}
+
+// ─── Login / Signup ────────────────────────────────────────────────────────
+
+function LoginScreen({
+  onSuccess,
+  onBack,
+}: {
+  onSuccess: () => void;
+  onBack: () => void;
+}) {
+  const [mode, setMode] = useState<"signin" | "signup">("signin");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [info, setInfo] = useState<string | null>(null);
+
+  async function handleEmail(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    setInfo(null);
+    if (!email.trim() || password.length < 6) {
+      setError("Enter a valid email and a password (6+ chars).");
+      return;
+    }
+    setLoading(true);
+    try {
+      if (mode === "signup") {
+        const { error } = await supabase.auth.signUp({
+          email: email.trim(),
+          password,
+          options: { emailRedirectTo: window.location.origin },
+        });
+        if (error) throw error;
+        // auto-confirm is on, so a session should exist
+        const { data } = await supabase.auth.getSession();
+        if (data.session) onSuccess();
+        else setInfo("Account created. Please sign in.");
+      } else {
+        const { error } = await supabase.auth.signInWithPassword({
+          email: email.trim(),
+          password,
+        });
+        if (error) throw error;
+        onSuccess();
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Something went wrong.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleGoogle() {
+    setError(null);
+    setLoading(true);
+    try {
+      const result = await lovable.auth.signInWithOAuth("google", {
+        redirect_uri: window.location.origin,
+      });
+      if (result.error) {
+        setError(result.error.message ?? "Google sign-in failed");
+        setLoading(false);
+        return;
+      }
+      if (result.redirected) return; // browser will navigate
+      onSuccess();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Google sign-in failed.");
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div className="w-full max-w-md animate-fade-up">
+      <button
+        type="button"
+        onClick={onBack}
+        className="mb-4 inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+      >
+        <ArrowLeft className="h-3 w-3" /> Back
+      </button>
+      <div className="mb-6 text-center">
+        <h2 className="mb-2 text-4xl font-black leading-none tracking-tight md:text-5xl">
+          {mode === "signin" ? (
+            <>Welcome <span className="text-gradient">back</span>.</>
+          ) : (
+            <>Join <span className="text-gradient">blink</span>.</>
+          )}
+        </h2>
+        <p className="text-sm text-muted-foreground">
+          {mode === "signin"
+            ? "Sign in to start matching."
+            : "Create an account to start matching. 18+ only."}
+        </p>
+      </div>
+
+      <div className="space-y-4 rounded-2xl border border-border bg-[var(--gradient-card)] p-6 shadow-2xl">
+        <Button
+          onClick={handleGoogle}
+          disabled={loading}
+          variant="outline"
+          className="h-12 w-full gap-2 border-[var(--neon-pink)]/40 bg-transparent text-sm font-bold hover:bg-[var(--neon-pink)]/10"
+        >
+          <svg className="h-4 w-4" viewBox="0 0 24 24" aria-hidden>
+            <path fill="#EA4335" d="M12 10.2v3.9h5.5c-.24 1.5-1.7 4.4-5.5 4.4-3.3 0-6-2.7-6-6.1s2.7-6.1 6-6.1c1.9 0 3.1.8 3.8 1.5l2.6-2.5C16.8 3.7 14.6 2.7 12 2.7 6.9 2.7 2.8 6.8 2.8 12s4.1 9.3 9.2 9.3c5.3 0 8.8-3.7 8.8-8.9 0-.6-.06-1-.14-1.5H12z"/>
+          </svg>
+          Continue with Google
+        </Button>
+
+        <div className="flex items-center gap-3">
+          <div className="h-px flex-1 bg-border" />
+          <span className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">or</span>
+          <div className="h-px flex-1 bg-border" />
+        </div>
+
+        <form onSubmit={handleEmail} className="space-y-3">
+          <Input
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="you@example.com"
+            className="h-12 bg-input/60"
+            autoComplete="email"
+          />
+          <Input
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="Password (6+ chars)"
+            className="h-12 bg-input/60"
+            autoComplete={mode === "signin" ? "current-password" : "new-password"}
+          />
+          {error && <p className="text-xs text-destructive">{error}</p>}
+          {info && <p className="text-xs text-[var(--neon-cyan)]">{info}</p>}
+          <Button
+            type="submit"
+            disabled={loading}
+            className="h-12 w-full gap-2 bg-[var(--gradient-accent)] text-base font-bold text-background hover:opacity-90"
+          >
+            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+            {mode === "signin" ? "Sign in" : "Create account"}
+          </Button>
+        </form>
+
+        <button
+          type="button"
+          onClick={() => {
+            setMode(mode === "signin" ? "signup" : "signin");
+            setError(null);
+            setInfo(null);
+          }}
+          className="block w-full text-center text-xs text-muted-foreground hover:text-foreground"
+        >
+          {mode === "signin"
+            ? "No account? Create one"
+            : "Already have an account? Sign in"}
+        </button>
       </div>
     </div>
   );

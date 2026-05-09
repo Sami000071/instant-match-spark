@@ -15,6 +15,7 @@ const PROFILE_KEY = "blink_chat_profile_v2";
 
 export type Profile = {
   nickname: string;
+  age: number | null;
   country: string;
   gender: "male" | "female" | "nonbinary" | "unspecified";
   avatarUrl: string;
@@ -22,10 +23,16 @@ export type Profile = {
 
 export const EMPTY_PROFILE: Profile = {
   nickname: "",
+  age: null,
   country: "",
   gender: "unspecified",
   avatarUrl: "",
 };
+
+export function setClientId(id: string) {
+  if (typeof window === "undefined") return;
+  localStorage.setItem(KEY, id);
+}
 
 export function loadProfile(): Profile | null {
   if (typeof window === "undefined") return null;
@@ -35,6 +42,7 @@ export function loadProfile(): Profile | null {
     const p = JSON.parse(raw) as Partial<Profile>;
     return {
       nickname: p.nickname ?? "",
+      age: typeof p.age === "number" ? p.age : null,
       country: p.country ?? "",
       gender: (p.gender as Profile["gender"]) ?? "unspecified",
       avatarUrl: p.avatarUrl ?? "",
