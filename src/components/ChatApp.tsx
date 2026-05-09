@@ -253,7 +253,16 @@ export default function ChatApp() {
 
   function handleLoginSuccess() {
     setStage("home");
+    refreshFriends();
   }
+
+  // After OAuth callback, auto-advance from intro/login to home and load friends.
+  useEffect(() => {
+    if (!authUserId) return;
+    if (stage === "intro" || stage === "login") setStage("home");
+    refreshFriends();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authUserId]);
 
   // Reset add-friend state whenever the session changes
   useEffect(() => {
