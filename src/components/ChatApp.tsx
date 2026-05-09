@@ -1974,3 +1974,166 @@ function FriendChatScreen({
     </div>
   );
 }
+
+// ─── Login / Signup ────────────────────────────────────────────────────────
+import { lovable } from "@/integrations/lovable";
+
+function LoginScreen({
+  onSuccess,
+  onBack,
+}: {
+  onSuccess: () => void;
+  onBack: () => void;
+}) {
+  const [mode, setMode] = useState<"signin" | "signup">("signin");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [info, setInfo] = useState<string | null>(null);
+
+  async function handleEmail(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    setInfo(null);
+    if (!email.trim() || password.length < 6) {
+      setError("Enter a valid email and a password (6+ chars).");
+      return;
+    }
+    setLoading(true);
+    try {
+      if (mode === "signup") {
+        const { error } = await supabase.auth.signUp({
+          email: email.trim(),
+          password,
+          options: { emailRedirectTo: window.location.origin },
+        });
+        if (error) throw error;
+        // auto-confirm is on, so a session should exist
+        const { data } = await supabase.auth.getSession();
+        if (data.session) onSuccess();
+        else setInfo("Account created. Please sign in.");
+      } else {
+        const { error } = await supabase.auth.signInWithPassword({
+          email: email.trim(),
+          password,
+        });
+        if (error) throw error;
+        onSuccess();
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Something went wrong.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleGoogle() {
+    setError(null);
+    setLoading(true);
+    try {
+      const result = await lovable.auth.signInWithOAuth("google", {
+        redirect_uri: window.location.origin,
+      });
+      if (result.error) {
+        setError(result.error.message ?? "Google sign-in failed");
+        setLoading(false);
+        return;
+      }
+      if (result.redirected) return; // browser will navigate
+      onSuccess();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Google sign-in failed.");
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div className="w-full max-w-md animate-fade-up">
+      <button
+        type="button"
+        onClick={onBack}
+        className="mb-4 inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+      >
+        <ArrowLeft className="h-3 w-3" /> Back
+      </button>
+      <div className="mb-6 text-center">
+        <h2 className="mb-2 text-4xl font-black leading-none tracking-tight md:text-5xl">
+          {mode === "signin" ? (
+            <>Welcome <span className="text-gradient">back</span>.</>
+          ) : (
+            <>Join <span className="text-gradient">blink</span>.</>
+          )}
+        </h2>
+        <p className="text-sm text-muted-foreground">
+          {mode === "signin"
+            ? "Sign in to start matching."
+            : "Create an account to start matching. 18+ only."}
+        </p>
+      </div>
+
+      <div className="space-y-4 rounded-2xl border border-border bg-[var(--gradient-card)] p-6 shadow-2xl">
+        <Button
+          onClick={handleGoogle}
+          disabled={loading}
+          variant="outline"
+          className="h-12 w-full gap-2 border-[var(--neon-pink)]/40 bg-transparent text-sm font-bold hover:bg-[var(--neon-pink)]/10"
+        >
+          <svg className="h-4 w-4" viewBox="0 0 24 24" aria-hidden>
+            <path fill="#EA4335" d="M12 10.2v3.9h5.5c-.24 1.5-1.7 4.4-5.5 4.4-3.3 0-6-2.7-6-6.1s2.7-6.1 6-6.1c1.9 0 3.1.8 3.8 1.5l2.6-2.5C16.8 3.7 14.6 2.7 12 2.7 6.9 2.7 2.8 6.8 2.8 12s4.1 9.3 9.2 9.3c5.3 0 8.8-3.7 8.8-8.9 0-.6-.06-1-.14-1.5H12z"/>
+          </svg>
+          Continue with Google
+        </Button>
+
+        <div className="flex items-center gap-3">
+          <div className="h-px flex-1 bg-border" />
+          <span className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">or</span>
+          <div className="h-px flex-1 bg-border" />
+        </div>
+
+        <form onSubmit={handleEmail} className="space-y-3">
+          <Input
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="you@example.com"
+            className="h-12 bg-input/60"
+            autoComplete="email"
+          />
+          <Input
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="Password (6+ chars)"
+            className="h-12 bg-input/60"
+            autoComplete={mode === "signin" ? "current-password" : "new-password"}
+          />
+          {error && <p className="text-xs text-destructive">{error}</p>}
+          {info && <p className="text-xs text-[var(--neon-cyan)]">{info}</p>}
+          <Button
+            type="submit"
+            disabled={loading}
+            className="h-12 w-full gap-2 bg-[var(--gradient-accent)] text-base font-bold text-background hover:opacity-90"
+          >
+            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+            {mode === "signin" ? "Sign in" : "Create account"}
+          </Button>
+        </form>
+
+        <button
+          type="button"
+          onClick={() => {
+            setMode(mode === "signin" ? "signup" : "signin");
+            setError(null);
+            setInfo(null);
+          }}
+          className="block w-full text-center text-xs text-muted-foreground hover:text-foreground"
+        >
+          {mode === "signin"
+            ? "No account? Create one"
+            : "Already have an account? Sign in"}
+        </button>
+      </div>
+    </div>
+  );
+}
