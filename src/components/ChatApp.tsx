@@ -47,6 +47,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { lovable } from "@/integrations/lovable";
 
 import {
   Sparkles,
