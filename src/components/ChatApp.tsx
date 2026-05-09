@@ -114,9 +114,22 @@ const REPORT_REASONS = [
 
 const CHAT_EMOJIS = ["😀", "😂", "😍", "😎", "😭", "😡", "👍", "👎", "❤️", "🔥", "✨", "🎉", "👋", "🙏"];
 
+type Stage =
+  | "intro"
+  | "login"
+  | "home"
+  | "matching"
+  | "deciding"
+  | "chatting"
+  | "ended"
+  | "friends"
+  | "friend-chat";
+
 export default function ChatApp() {
   const [stage, setStage] = useState<Stage>("intro");
   const [profile, setProfile] = useState<Profile>(EMPTY_PROFILE);
+  const [authUserId, setAuthUserId] = useState<string | null>(null);
+  const [authReady, setAuthReady] = useState(false);
   const [session, setSession] = useState<SessionRow | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [draft, setDraft] = useState("");
@@ -146,12 +159,71 @@ export default function ChatApp() {
   const listFriendsCall = useServerFn(listFriendsFn);
   const removeFriendCall = useServerFn(removeFriendFn);
 
-  // hydrate client id + profile. Always show intro first — users must click
-  // Get started themselves. Only auto-reconnect if there's an ongoing chat.
+  // Load DB profile for the signed-in user. Sets clientIdRef to the stable
+  // matching id stored in the profiles row.
+  async function hydrateProfileForUser(userId: string) {
+    const { data } = await supabase
+      .from("profiles")
+      .select("client_id, nickname, age, country, gender, avatar_url")
+      .eq("user_id", userId)
+      .maybeSingle();
+    if (data) {
+      clientIdRef.current = data.client_id as string;
+      setClientId(clientIdRef.current);
+      const p: Profile = {
+        nickname: data.nickname || "",
+        age: typeof data.age === "number" ? data.age : null,
+        country: data.country || "",
+        gender: (data.gender as Profile["gender"]) || "unspecified",
+        avatarUrl: data.avatar_url || "",
+      };
+      setProfile(p);
+      saveProfile(p);
+    }
+  }
+
+  async function saveProfileToDb(p: Profile) {
+    if (!authUserId) throw new Error("Not signed in");
+    if (p.age == null || p.age < 18) throw new Error("You must be 18 or older");
+    const { error } = await supabase
+      .from("profiles")
+      .update({
+        nickname: p.nickname,
+        age: p.age,
+        country: p.country,
+        gender: p.gender,
+        avatar_url: p.avatarUrl,
+      })
+      .eq("user_id", authUserId);
+    if (error) throw new Error(error.message);
+    setProfile(p);
+    saveProfile(p);
+  }
+
+  // Auth bootstrap: subscribe FIRST, then check existing session.
   useEffect(() => {
     clientIdRef.current = getClientId();
-    const p = loadProfile();
-    if (p) setProfile(p);
+    const cached = loadProfile();
+    if (cached) setProfile(cached);
+
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, s) => {
+      const uid = s?.user?.id ?? null;
+      setAuthUserId(uid);
+      if (uid) {
+        // hydrate after micro-task to avoid Supabase deadlocks
+        setTimeout(() => {
+          hydrateProfileForUser(uid).catch(() => {});
+        }, 0);
+      }
+    });
+
+    supabase.auth.getSession().then(({ data }) => {
+      const uid = data.session?.user?.id ?? null;
+      setAuthUserId(uid);
+      if (uid) hydrateProfileForUser(uid).catch(() => {});
+      setAuthReady(true);
+    });
+
     // Reconnect ONLY to an in-progress chat (not a stale deciding session).
     findActive({ data: { clientId: clientIdRef.current } })
       .then(({ session: s }) => {
@@ -162,7 +234,24 @@ export default function ChatApp() {
         }
       })
       .catch(() => {});
+
+    return () => sub.subscription.unsubscribe();
   }, [findActive]);
+
+  async function handleLogout() {
+    await supabase.auth.signOut();
+    setProfile(EMPTY_PROFILE);
+    setStage("intro");
+  }
+
+  function handleGetStarted() {
+    if (authUserId) setStage("home");
+    else setStage("login");
+  }
+
+  function handleLoginSuccess() {
+    setStage("home");
+  }
 
   // Reset add-friend state whenever the session changes
   useEffect(() => {
