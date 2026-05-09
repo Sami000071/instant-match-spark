@@ -229,6 +229,42 @@ export type Database = {
           },
         ]
       }
+      profiles: {
+        Row: {
+          age: number | null
+          avatar_url: string
+          client_id: string
+          country: string
+          created_at: string
+          gender: string
+          nickname: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          age?: number | null
+          avatar_url?: string
+          client_id?: string
+          country?: string
+          created_at?: string
+          gender?: string
+          nickname?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          age?: number | null
+          avatar_url?: string
+          client_id?: string
+          country?: string
+          created_at?: string
+          gender?: string
+          nickname?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       queue: {
         Row: {
           avatar_url: string
