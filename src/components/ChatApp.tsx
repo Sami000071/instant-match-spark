@@ -6,6 +6,7 @@ import {
   getClientId,
   loadProfile,
   saveProfile,
+  setClientId,
   type Profile,
 } from "@/lib/client-id";
 import { addBlocked } from "@/lib/blocks";
