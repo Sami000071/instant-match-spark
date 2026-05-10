@@ -81,9 +81,10 @@ export const sendMessageFn = createServerFn({ method: "POST" })
   });
 
 export const leaveQueueFn = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
   .inputValidator(z.object({ clientId: uuid }).parse)
-  .handler(async ({ data }) => {
-    await leaveQueue(data.clientId);
+  .handler(async ({ data, context }) => {
+    await leaveQueue(data.clientId, context.userId as string);
     return { ok: true };
   });
 
