@@ -91,21 +91,37 @@ async function getBlockedSet(clientId: string): Promise<Set<string>> {
 export async function joinQueueAndTryMatch(
   clientId: string,
   profile: Profile,
-): Promise<{ session: MatchSession | null }> {
+  lobby: Lobby = "any",
+  authUserId: string | null = null,
+): Promise<{ session: MatchSession | null; charged?: number }> {
   // Reconnect path: if already in an active session, return it.
   const existing = await findActiveSession(clientId);
   if (existing) return { session: existing };
+
+  // Premium lobbies require auth, gender match, and a coin payment.
+  let charged = 0;
+  if (lobby !== "any") {
+    if (!authUserId) throw new Error("AUTH_REQUIRED");
+    const requiredGender = lobbyRequiresGender(lobby);
+    if (requiredGender && profile.gender !== requiredGender) {
+      throw new Error("GENDER_MISMATCH");
+    }
+    // Atomic spend — throws INSUFFICIENT_FUNDS if balance too low.
+    await spendCoins(authUserId, LOBBY_COST, "spend_lobby", { lobby });
+    charged = LOBBY_COST;
+  }
 
   // Clean up any prior queue entries first
   await supabaseAdmin.from("queue").delete().eq("client_id", clientId);
 
   const blocked = await getBlockedSet(clientId);
 
-  // Find another waiter (oldest first), filtering out blocked pairs.
+  // Find another waiter in the same lobby (oldest first), filtering blocked pairs.
   const { data: waiters } = await supabaseAdmin
     .from("queue")
     .select("*")
     .neq("client_id", clientId)
+    .eq("lobby", lobby)
     .order("created_at", { ascending: true })
     .limit(20);
 
@@ -135,11 +151,12 @@ export async function joinQueueAndTryMatch(
           user_b_gender: profile.gender,
           user_b_avatar_url: profile.avatarUrl,
           decide_deadline: deadline,
+          lobby,
         })
         .select()
         .single();
       if (error) throw error;
-      return { session: session as MatchSession };
+      return { session: session as MatchSession, charged };
     }
   }
 
@@ -150,8 +167,9 @@ export async function joinQueueAndTryMatch(
     country: profile.country,
     gender: profile.gender,
     avatar_url: profile.avatarUrl,
+    lobby,
   });
-  return { session: null };
+  return { session: null, charged };
 }
 
 // Apply a decision. If both accepted -> chatting. If any skip or deadline passed -> ended.
