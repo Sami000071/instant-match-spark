@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
+import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import {
   addFriend,
   applyDecision,
@@ -23,6 +24,7 @@ const nickname = z.string().trim().min(1).max(24);
 const country = z.string().trim().max(64).default("");
 const gender = z.enum(["male", "female", "nonbinary", "unspecified"]).default("unspecified");
 const avatarUrl = z.string().trim().max(500).default("");
+const lobby = z.enum(["any", "girls", "boys"]).default("any");
 
 const profileSchema = z.object({
   nickname,
@@ -32,11 +34,12 @@ const profileSchema = z.object({
 });
 
 export const joinQueueFn = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
   .inputValidator(
-    z.object({ clientId: uuid, profile: profileSchema }).parse,
+    z.object({ clientId: uuid, profile: profileSchema, lobby }).parse,
   )
-  .handler(async ({ data }) => {
-    return joinQueueAndTryMatch(data.clientId, data.profile);
+  .handler(async ({ data, context }) => {
+    return joinQueueAndTryMatch(data.clientId, data.profile, data.lobby, context.userId as string);
   });
 
 export const decideFn = createServerFn({ method: "POST" })
@@ -78,9 +81,10 @@ export const sendMessageFn = createServerFn({ method: "POST" })
   });
 
 export const leaveQueueFn = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
   .inputValidator(z.object({ clientId: uuid }).parse)
-  .handler(async ({ data }) => {
-    await leaveQueue(data.clientId);
+  .handler(async ({ data, context }) => {
+    await leaveQueue(data.clientId, context.userId as string);
     return { ok: true };
   });
 
