@@ -419,7 +419,7 @@ export default function ChatApp() {
       if (cancelled) return;
       try {
         const res = await join({
-          data: { clientId: clientIdRef.current, profile },
+          data: { clientId: clientIdRef.current, profile, lobby: selectedLobby },
         });
         if (cancelled) return;
         if (res.session) {
@@ -438,7 +438,7 @@ export default function ChatApp() {
       cancelled = true;
       if (timer) clearTimeout(timer);
     };
-  }, [stage, profile, join]);
+  }, [stage, profile, join, selectedLobby]);
 
   // realtime: subscribe to session updates while deciding/chatting
   useEffect(() => {
