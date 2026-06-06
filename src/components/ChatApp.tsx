@@ -151,6 +151,8 @@ export default function ChatApp() {
   const [friendStatus, setFriendStatus] = useState<"idle" | "pending" | "mutual">("idle");
   const [friends, setFriends] = useState<Friend[]>([]);
   const [activeFriend, setActiveFriend] = useState<Friend | null>(null);
+  const [selectedLobby, setSelectedLobby] = useState<Lobby>("any");
+  const [balance, setBalance] = useState<number>(0);
   const clientIdRef = useRef<string>("");
   const typingChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const lastTypingSentRef = useRef<number>(0);
@@ -168,6 +170,16 @@ export default function ChatApp() {
   const addFriendCall = useServerFn(addFriendFn);
   const listFriendsCall = useServerFn(listFriendsFn);
   const removeFriendCall = useServerFn(removeFriendFn);
+  const getBalance = useServerFn(getBalanceFn);
+
+  async function refreshBalance() {
+    try {
+      const { balance: b } = await getBalance({});
+      setBalance(b);
+    } catch {
+      // ignore
+    }
+  }
 
   // Load DB profile for the signed-in user. Sets clientIdRef to the stable
   // matching id stored in the profiles row.
