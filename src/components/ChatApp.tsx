@@ -542,27 +542,45 @@ export default function ChatApp() {
     return () => window.removeEventListener("beforeunload", handler);
   }, [stage, leaveQ]);
 
-  async function startMatching(p: Profile) {
+  async function startMatching(p: Profile, lobby: Lobby = selectedLobby) {
     if (rematchTimerRef.current) {
       clearTimeout(rematchTimerRef.current);
       rematchTimerRef.current = null;
     }
     saveProfile(p);
     setProfile(p);
+    setSelectedLobby(lobby);
     setSession(null);
     setMessages([]);
     setEndedReason(null);
     setPartnerTyping(false);
     setStage("matching");
-    const res = await join({
-      data: {
-        clientId: clientIdRef.current,
-        profile: p,
-      },
-    });
-    if (res.session) {
-      setSession(res.session as SessionRow);
-      setStage(res.session.status === "chatting" ? "chatting" : "deciding");
+    try {
+      const res = await join({
+        data: {
+          clientId: clientIdRef.current,
+          profile: p,
+          lobby,
+        },
+      });
+      if (res.session) {
+        setSession(res.session as SessionRow);
+        setStage(res.session.status === "chatting" ? "chatting" : "deciding");
+      }
+      if (lobby !== "any") {
+        toast.success(`Joined ${lobby === "girls" ? "Girls" : "Boys"} lobby · -24 coins`);
+        refreshBalance();
+      }
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Could not join lobby";
+      if (msg.includes("INSUFFICIENT_FUNDS")) {
+        toast.error("Not enough coins. Visit the shop to top up.");
+      } else if (msg.includes("GENDER_MISMATCH")) {
+        toast.error("This lobby requires the matching gender on your profile.");
+      } else {
+        toast.error(msg);
+      }
+      setStage("lobby");
     }
   }
 
