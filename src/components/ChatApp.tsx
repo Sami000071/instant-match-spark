@@ -679,7 +679,7 @@ export default function ChatApp() {
   // when ended → auto-rematch
   useEffect(() => {
     if (stage !== "ended") return;
-    rematchTimerRef.current = setTimeout(() => startMatching(profile), 600);
+    rematchTimerRef.current = setTimeout(() => startMatching(profile, selectedLobby), 600);
     return () => {
       if (rematchTimerRef.current) {
         clearTimeout(rematchTimerRef.current);
