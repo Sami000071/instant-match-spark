@@ -818,10 +818,12 @@ function Header({
   onHome,
   onFriends,
   friendsCount,
+  balance,
 }: {
   onHome?: () => void;
   onFriends?: () => void;
   friendsCount: number;
+  balance: number | null;
 }) {
   return (
     <header className="mb-6 flex items-center justify-between">
@@ -845,6 +847,17 @@ function Header({
         </div>
       </button>
       <div className="flex items-center gap-2">
+        {balance !== null && (
+          <Link
+            to="/shop"
+            className="flex h-8 items-center gap-1.5 rounded-md border border-[var(--neon-cyan)]/40 px-2.5 text-xs font-bold text-[var(--neon-cyan)] hover:bg-[var(--neon-cyan)]/10"
+            title="Shop"
+          >
+            <Coins className="h-3.5 w-3.5" />
+            <span className="tabular-nums">{balance}</span>
+            <ShoppingBag className="h-3.5 w-3.5 opacity-70" />
+          </Link>
+        )}
         {onFriends && (
           <Button
             variant="outline"
