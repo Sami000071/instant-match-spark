@@ -281,6 +281,7 @@ export default function ChatApp() {
     if (!authUserId) return;
     if (stage === "intro" || stage === "login") setStage("home");
     refreshFriends();
+    refreshBalance();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authUserId]);
 
