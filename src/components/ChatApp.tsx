@@ -1122,6 +1122,146 @@ function HomeScreen({
   );
 }
 
+// ─── Lobby Chooser ─────────────────────────────────────────────────────────
+const LOBBY_COST = 24;
+
+function LobbyScreen({
+  balance,
+  profileGender,
+  onCancel,
+  onChoose,
+}: {
+  balance: number;
+  profileGender: Profile["gender"];
+  onCancel: () => void;
+  onChoose: (lobby: Lobby) => void;
+}) {
+  const [pending, setPending] = useState<Lobby | null>(null);
+
+  const lobbies: {
+    id: Lobby;
+    label: string;
+    desc: string;
+    cost: number;
+    accent: string;
+    requireGender?: "female" | "male";
+  }[] = [
+    { id: "any", label: "Free lobby", desc: "Match with anyone, anywhere.", cost: 0, accent: "var(--neon-cyan)" },
+    { id: "girls", label: "Girls only", desc: "Only match with women.", cost: LOBBY_COST, accent: "var(--neon-pink)", requireGender: "female" },
+    { id: "boys", label: "Boys only", desc: "Only match with men.", cost: LOBBY_COST, accent: "var(--neon-lime)", requireGender: "male" },
+  ];
+
+  function tryChoose(lobby: Lobby) {
+    const meta = lobbies.find((l) => l.id === lobby)!;
+    if (meta.requireGender && profileGender !== meta.requireGender) {
+      toast.error(
+        `This lobby requires your profile gender to be ${meta.requireGender === "female" ? "Female" : "Male"}.`,
+      );
+      return;
+    }
+    if (meta.cost > balance) {
+      toast.error("Not enough coins. Visit the shop to top up.");
+      return;
+    }
+    if (meta.cost === 0) {
+      onChoose(lobby);
+      return;
+    }
+    setPending(lobby);
+  }
+
+  return (
+    <div className="w-full max-w-md animate-fade-up">
+      <div className="mb-6 text-center">
+        <h2 className="text-4xl font-black tracking-tight">
+          Pick a <span className="text-gradient">lobby</span>
+        </h2>
+        <p className="mt-2 text-sm text-muted-foreground">
+          Filtered lobbies cost coins. Refunded if you leave before matching.
+        </p>
+      </div>
+
+      <div className="space-y-3">
+        {lobbies.map((l) => (
+          <button
+            key={l.id}
+            type="button"
+            onClick={() => tryChoose(l.id)}
+            className="group flex w-full items-center justify-between rounded-2xl border border-border bg-[var(--gradient-card)] p-4 text-left shadow-lg transition hover:border-[color:var(--neon-pink)]/60"
+          >
+            <div className="flex items-center gap-3">
+              <div
+                className="flex h-11 w-11 items-center justify-center rounded-xl"
+                style={{ background: `color-mix(in oklab, ${l.accent} 18%, transparent)` }}
+              >
+                <Sparkles className="h-5 w-5" style={{ color: l.accent }} />
+              </div>
+              <div>
+                <p className="text-base font-bold">{l.label}</p>
+                <p className="text-xs text-muted-foreground">{l.desc}</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-1 text-sm font-bold" style={{ color: l.accent }}>
+              {l.cost === 0 ? (
+                <span>Free</span>
+              ) : (
+                <>
+                  <Coins className="h-4 w-4" />
+                  <span className="tabular-nums">{l.cost}</span>
+                </>
+              )}
+            </div>
+          </button>
+        ))}
+      </div>
+
+      <div className="mt-6 flex items-center justify-between text-xs text-muted-foreground">
+        <span>
+          Balance: <span className="font-bold text-[var(--neon-cyan)]">{balance}</span> coins
+        </span>
+        <Link to="/shop" className="font-bold text-[var(--neon-cyan)] hover:underline">
+          Get more →
+        </Link>
+      </div>
+
+      <div className="mt-4 flex justify-center">
+        <Button variant="ghost" size="sm" onClick={onCancel} className="text-muted-foreground">
+          Back
+        </Button>
+      </div>
+
+      <Dialog open={pending !== null} onOpenChange={(o) => !o && setPending(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Spend {LOBBY_COST} coins?</DialogTitle>
+            <DialogDescription>
+              You'll be matched only with{" "}
+              {pending === "girls" ? "women" : pending === "boys" ? "men" : "anyone"} in this
+              lobby. Coins are refunded if you leave before matching.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPending(null)}>
+              Cancel
+            </Button>
+            <Button
+              className="bg-[var(--gradient-accent)] text-background hover:opacity-90"
+              onClick={() => {
+                const l = pending!;
+                setPending(null);
+                onChoose(l);
+              }}
+            >
+              <Coins className="mr-1 h-4 w-4" />
+              Confirm
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
 // ─── Matching ──────────────────────────────────────────────────────────────
 function MatchingScreen({
   onCancel,
