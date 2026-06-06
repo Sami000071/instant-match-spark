@@ -715,11 +715,23 @@ export default function ChatApp() {
           {stage === "home" && (
             <HomeScreen
               initial={profile}
-              onStart={startMatching}
+              onStart={(p) => {
+                setProfile(p);
+                saveProfile(p);
+                setStage("lobby");
+              }}
               onFriends={openFriends}
               onLogout={handleLogout}
               friendsCount={friends.length}
               onSave={saveProfileToDb}
+            />
+          )}
+          {stage === "lobby" && (
+            <LobbyScreen
+              balance={balance}
+              profileGender={profile.gender}
+              onCancel={() => setStage("home")}
+              onChoose={(lobby) => startMatching(profile, lobby)}
             />
           )}
           {stage === "matching" && (
