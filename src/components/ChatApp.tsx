@@ -1216,13 +1216,19 @@ function LobbyScreen({
       </div>
 
       <div className="mt-6 flex items-center justify-between text-xs text-muted-foreground">
-        <span>
-          Balance: <span className="font-bold text-[var(--neon-cyan)]">{balance}</span> coins
+        <span className="flex items-center gap-1.5">
+          Balance:
+          <Coins className="h-3.5 w-3.5 text-[var(--neon-cyan)]" />
+          <span className="font-bold text-[var(--neon-cyan)] tabular-nums">{balance}</span>
+          <span>coins</span>
         </span>
         <Link to="/shop" className="font-bold text-[var(--neon-cyan)] hover:underline">
           Get more →
         </Link>
       </div>
+      <p className="mt-2 text-center text-[11px] text-muted-foreground">
+        New users start with <span className="font-bold text-[var(--neon-cyan)]">50 free coins</span> 🎉
+      </p>
 
       <div className="mt-4 flex justify-center">
         <Button variant="ghost" size="sm" onClick={onCancel} className="text-muted-foreground">
