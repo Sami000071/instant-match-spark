@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
+import { Link } from "@tanstack/react-router";
+import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import {
   EMPTY_PROFILE,
@@ -28,6 +30,7 @@ import {
   sendFriendMessageFn,
   sendMessageFn,
 } from "@/server/matchmaking.functions";
+import { getBalanceFn } from "@/server/coins.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -71,6 +74,8 @@ import {
   Globe2,
   MessageCircle,
   Clock,
+  Coins,
+  ShoppingBag,
 } from "lucide-react";
 
 
@@ -146,6 +151,8 @@ export default function ChatApp() {
   const [friendStatus, setFriendStatus] = useState<"idle" | "pending" | "mutual">("idle");
   const [friends, setFriends] = useState<Friend[]>([]);
   const [activeFriend, setActiveFriend] = useState<Friend | null>(null);
+  const [selectedLobby, setSelectedLobby] = useState<Lobby>("any");
+  const [balance, setBalance] = useState<number>(0);
   const clientIdRef = useRef<string>("");
   const typingChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const lastTypingSentRef = useRef<number>(0);
@@ -163,6 +170,16 @@ export default function ChatApp() {
   const addFriendCall = useServerFn(addFriendFn);
   const listFriendsCall = useServerFn(listFriendsFn);
   const removeFriendCall = useServerFn(removeFriendFn);
+  const getBalance = useServerFn(getBalanceFn);
+
+  async function refreshBalance() {
+    try {
+      const { balance: b } = await getBalance({});
+      setBalance(b);
+    } catch {
+      // ignore
+    }
+  }
 
   // Load DB profile for the signed-in user. Sets clientIdRef to the stable
   // matching id stored in the profiles row.
@@ -264,6 +281,7 @@ export default function ChatApp() {
     if (!authUserId) return;
     if (stage === "intro" || stage === "login") setStage("home");
     refreshFriends();
+    refreshBalance();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authUserId]);
 
@@ -401,7 +419,7 @@ export default function ChatApp() {
       if (cancelled) return;
       try {
         const res = await join({
-          data: { clientId: clientIdRef.current, profile },
+          data: { clientId: clientIdRef.current, profile, lobby: selectedLobby },
         });
         if (cancelled) return;
         if (res.session) {
@@ -420,7 +438,7 @@ export default function ChatApp() {
       cancelled = true;
       if (timer) clearTimeout(timer);
     };
-  }, [stage, profile, join]);
+  }, [stage, profile, join, selectedLobby]);
 
   // realtime: subscribe to session updates while deciding/chatting
   useEffect(() => {
@@ -524,27 +542,45 @@ export default function ChatApp() {
     return () => window.removeEventListener("beforeunload", handler);
   }, [stage, leaveQ]);
 
-  async function startMatching(p: Profile) {
+  async function startMatching(p: Profile, lobby: Lobby = selectedLobby) {
     if (rematchTimerRef.current) {
       clearTimeout(rematchTimerRef.current);
       rematchTimerRef.current = null;
     }
     saveProfile(p);
     setProfile(p);
+    setSelectedLobby(lobby);
     setSession(null);
     setMessages([]);
     setEndedReason(null);
     setPartnerTyping(false);
     setStage("matching");
-    const res = await join({
-      data: {
-        clientId: clientIdRef.current,
-        profile: p,
-      },
-    });
-    if (res.session) {
-      setSession(res.session as SessionRow);
-      setStage(res.session.status === "chatting" ? "chatting" : "deciding");
+    try {
+      const res = await join({
+        data: {
+          clientId: clientIdRef.current,
+          profile: p,
+          lobby,
+        },
+      });
+      if (res.session) {
+        setSession(res.session as SessionRow);
+        setStage(res.session.status === "chatting" ? "chatting" : "deciding");
+      }
+      if (lobby !== "any") {
+        toast.success(`Joined ${lobby === "girls" ? "Girls" : "Boys"} lobby · -24 coins`);
+        refreshBalance();
+      }
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Could not join lobby";
+      if (msg.includes("INSUFFICIENT_FUNDS")) {
+        toast.error("Not enough coins. Visit the shop to top up.");
+      } else if (msg.includes("GENDER_MISMATCH")) {
+        toast.error("This lobby requires the matching gender on your profile.");
+      } else {
+        toast.error(msg);
+      }
+      setStage("lobby");
     }
   }
 
@@ -574,12 +610,13 @@ export default function ChatApp() {
     await leaveS({ data: { sessionId: session.id, clientId: clientIdRef.current } });
     setSession(null);
     setMessages([]);
-    startMatching(profile);
+    startMatching(profile, selectedLobby);
   }
 
   async function onCancelMatching() {
     await leaveQ({ data: { clientId: clientIdRef.current } });
     setStage("home");
+    refreshBalance();
   }
 
   async function onSend() {
@@ -642,7 +679,7 @@ export default function ChatApp() {
   // when ended → auto-rematch
   useEffect(() => {
     if (stage !== "ended") return;
-    rematchTimerRef.current = setTimeout(() => startMatching(profile), 600);
+    rematchTimerRef.current = setTimeout(() => startMatching(profile, selectedLobby), 600);
     return () => {
       if (rematchTimerRef.current) {
         clearTimeout(rematchTimerRef.current);
@@ -663,6 +700,7 @@ export default function ChatApp() {
           onHome={stage === "home" || stage === "intro" || stage === "login" ? undefined : goHome}
           onFriends={stage === "intro" || stage === "login" || !authUserId ? undefined : openFriends}
           friendsCount={friends.length}
+          balance={authUserId ? balance : null}
         />
         <div className="flex flex-1 items-center justify-center">
           {stage === "intro" && (
@@ -677,11 +715,23 @@ export default function ChatApp() {
           {stage === "home" && (
             <HomeScreen
               initial={profile}
-              onStart={startMatching}
+              onStart={(p) => {
+                setProfile(p);
+                saveProfile(p);
+                setStage("lobby");
+              }}
               onFriends={openFriends}
               onLogout={handleLogout}
               friendsCount={friends.length}
               onSave={saveProfileToDb}
+            />
+          )}
+          {stage === "lobby" && (
+            <LobbyScreen
+              balance={balance}
+              profileGender={profile.gender}
+              onCancel={() => setStage("home")}
+              onChoose={(lobby) => startMatching(profile, lobby)}
             />
           )}
           {stage === "matching" && (
@@ -768,10 +818,12 @@ function Header({
   onHome,
   onFriends,
   friendsCount,
+  balance,
 }: {
   onHome?: () => void;
   onFriends?: () => void;
   friendsCount: number;
+  balance: number | null;
 }) {
   return (
     <header className="mb-6 flex items-center justify-between">
@@ -795,6 +847,17 @@ function Header({
         </div>
       </button>
       <div className="flex items-center gap-2">
+        {balance !== null && (
+          <Link
+            to="/shop"
+            className="flex h-8 items-center gap-1.5 rounded-md border border-[var(--neon-cyan)]/40 px-2.5 text-xs font-bold text-[var(--neon-cyan)] hover:bg-[var(--neon-cyan)]/10"
+            title="Shop"
+          >
+            <Coins className="h-3.5 w-3.5" />
+            <span className="tabular-nums">{balance}</span>
+            <ShoppingBag className="h-3.5 w-3.5 opacity-70" />
+          </Link>
+        )}
         {onFriends && (
           <Button
             variant="outline"
@@ -1055,6 +1118,146 @@ function HomeScreen({
           Be kind. Reports & blocks keep the community safe. 18+ only.
         </p>
       </div>
+    </div>
+  );
+}
+
+// ─── Lobby Chooser ─────────────────────────────────────────────────────────
+const LOBBY_COST = 24;
+
+function LobbyScreen({
+  balance,
+  profileGender,
+  onCancel,
+  onChoose,
+}: {
+  balance: number;
+  profileGender: Profile["gender"];
+  onCancel: () => void;
+  onChoose: (lobby: Lobby) => void;
+}) {
+  const [pending, setPending] = useState<Lobby | null>(null);
+
+  const lobbies: {
+    id: Lobby;
+    label: string;
+    desc: string;
+    cost: number;
+    accent: string;
+    requireGender?: "female" | "male";
+  }[] = [
+    { id: "any", label: "Free lobby", desc: "Match with anyone, anywhere.", cost: 0, accent: "var(--neon-cyan)" },
+    { id: "girls", label: "Girls only", desc: "Only match with women.", cost: LOBBY_COST, accent: "var(--neon-pink)", requireGender: "female" },
+    { id: "boys", label: "Boys only", desc: "Only match with men.", cost: LOBBY_COST, accent: "var(--neon-lime)", requireGender: "male" },
+  ];
+
+  function tryChoose(lobby: Lobby) {
+    const meta = lobbies.find((l) => l.id === lobby)!;
+    if (meta.requireGender && profileGender !== meta.requireGender) {
+      toast.error(
+        `This lobby requires your profile gender to be ${meta.requireGender === "female" ? "Female" : "Male"}.`,
+      );
+      return;
+    }
+    if (meta.cost > balance) {
+      toast.error("Not enough coins. Visit the shop to top up.");
+      return;
+    }
+    if (meta.cost === 0) {
+      onChoose(lobby);
+      return;
+    }
+    setPending(lobby);
+  }
+
+  return (
+    <div className="w-full max-w-md animate-fade-up">
+      <div className="mb-6 text-center">
+        <h2 className="text-4xl font-black tracking-tight">
+          Pick a <span className="text-gradient">lobby</span>
+        </h2>
+        <p className="mt-2 text-sm text-muted-foreground">
+          Filtered lobbies cost coins. Refunded if you leave before matching.
+        </p>
+      </div>
+
+      <div className="space-y-3">
+        {lobbies.map((l) => (
+          <button
+            key={l.id}
+            type="button"
+            onClick={() => tryChoose(l.id)}
+            className="group flex w-full items-center justify-between rounded-2xl border border-border bg-[var(--gradient-card)] p-4 text-left shadow-lg transition hover:border-[color:var(--neon-pink)]/60"
+          >
+            <div className="flex items-center gap-3">
+              <div
+                className="flex h-11 w-11 items-center justify-center rounded-xl"
+                style={{ background: `color-mix(in oklab, ${l.accent} 18%, transparent)` }}
+              >
+                <Sparkles className="h-5 w-5" style={{ color: l.accent }} />
+              </div>
+              <div>
+                <p className="text-base font-bold">{l.label}</p>
+                <p className="text-xs text-muted-foreground">{l.desc}</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-1 text-sm font-bold" style={{ color: l.accent }}>
+              {l.cost === 0 ? (
+                <span>Free</span>
+              ) : (
+                <>
+                  <Coins className="h-4 w-4" />
+                  <span className="tabular-nums">{l.cost}</span>
+                </>
+              )}
+            </div>
+          </button>
+        ))}
+      </div>
+
+      <div className="mt-6 flex items-center justify-between text-xs text-muted-foreground">
+        <span>
+          Balance: <span className="font-bold text-[var(--neon-cyan)]">{balance}</span> coins
+        </span>
+        <Link to="/shop" className="font-bold text-[var(--neon-cyan)] hover:underline">
+          Get more →
+        </Link>
+      </div>
+
+      <div className="mt-4 flex justify-center">
+        <Button variant="ghost" size="sm" onClick={onCancel} className="text-muted-foreground">
+          Back
+        </Button>
+      </div>
+
+      <Dialog open={pending !== null} onOpenChange={(o) => !o && setPending(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Spend {LOBBY_COST} coins?</DialogTitle>
+            <DialogDescription>
+              You'll be matched only with{" "}
+              {pending === "girls" ? "women" : pending === "boys" ? "men" : "anyone"} in this
+              lobby. Coins are refunded if you leave before matching.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPending(null)}>
+              Cancel
+            </Button>
+            <Button
+              className="bg-[var(--gradient-accent)] text-background hover:opacity-90"
+              onClick={() => {
+                const l = pending!;
+                setPending(null);
+                onChoose(l);
+              }}
+            >
+              <Coins className="mr-1 h-4 w-4" />
+              Confirm
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
