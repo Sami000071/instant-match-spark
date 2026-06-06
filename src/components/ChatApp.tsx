@@ -120,15 +120,12 @@ type Stage =
   | "intro"
   | "login"
   | "home"
-  | "lobby"
   | "matching"
   | "deciding"
   | "chatting"
   | "ended"
   | "friends"
   | "friend-chat";
-
-type Lobby = "any" | "girls" | "boys";
 
 export default function ChatApp() {
   const [stage, setStage] = useState<Stage>("intro");
