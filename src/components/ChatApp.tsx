@@ -700,6 +700,7 @@ export default function ChatApp() {
           onHome={stage === "home" || stage === "intro" || stage === "login" ? undefined : goHome}
           onFriends={stage === "intro" || stage === "login" || !authUserId ? undefined : openFriends}
           friendsCount={friends.length}
+          balance={authUserId ? balance : null}
         />
         <div className="flex flex-1 items-center justify-center">
           {stage === "intro" && (
