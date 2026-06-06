@@ -610,12 +610,13 @@ export default function ChatApp() {
     await leaveS({ data: { sessionId: session.id, clientId: clientIdRef.current } });
     setSession(null);
     setMessages([]);
-    startMatching(profile);
+    startMatching(profile, selectedLobby);
   }
 
   async function onCancelMatching() {
     await leaveQ({ data: { clientId: clientIdRef.current } });
     setStage("home");
+    refreshBalance();
   }
 
   async function onSend() {
