@@ -96,6 +96,7 @@ export const reportPartnerFn = createServerFn({ method: "POST" })
     }).parse,
   )
   .handler(async ({ data }) => {
+    const { reportPartner } = await import("@/server/matchmaking.server");
     await reportPartner({
       sessionId: data.sessionId,
       reporterClientId: data.clientId,
@@ -109,6 +110,7 @@ export const reportPartnerFn = createServerFn({ method: "POST" })
 export const blockPartnerFn = createServerFn({ method: "POST" })
   .inputValidator(z.object({ sessionId: uuid, clientId: uuid }).parse)
   .handler(async ({ data }) => {
+    const { blockPartner } = await import("@/server/matchmaking.server");
     return blockPartner(data.sessionId, data.clientId);
   });
 
@@ -120,6 +122,7 @@ export const createAvatarUploadUrlFn = createServerFn({ method: "POST" })
     }).parse,
   )
   .handler(async ({ data }) => {
+    const { createAvatarUploadUrl } = await import("@/server/matchmaking.server");
     return createAvatarUploadUrl(data.clientId, data.ext);
   });
 
@@ -132,12 +135,14 @@ export const addFriendFn = createServerFn({ method: "POST" })
     }).parse,
   )
   .handler(async ({ data }) => {
+    const { addFriend } = await import("@/server/matchmaking.server");
     return addFriend(data.sessionId, data.clientId, data.profile);
   });
 
 export const listFriendsFn = createServerFn({ method: "POST" })
   .inputValidator(z.object({ clientId: uuid }).parse)
   .handler(async ({ data }) => {
+    const { listFriends } = await import("@/server/matchmaking.server");
     const friends = await listFriends(data.clientId);
     return { friends };
   });
@@ -145,6 +150,7 @@ export const listFriendsFn = createServerFn({ method: "POST" })
 export const removeFriendFn = createServerFn({ method: "POST" })
   .inputValidator(z.object({ clientId: uuid, otherId: uuid }).parse)
   .handler(async ({ data }) => {
+    const { removeFriend } = await import("@/server/matchmaking.server");
     await removeFriend(data.clientId, data.otherId);
     return { ok: true };
   });
@@ -158,6 +164,7 @@ export const sendFriendMessageFn = createServerFn({ method: "POST" })
     }).parse,
   )
   .handler(async ({ data }) => {
+    const { sendFriendMessage } = await import("@/server/matchmaking.server");
     await sendFriendMessage(data.clientId, data.otherId, data.content);
     return { ok: true };
   });
@@ -165,6 +172,7 @@ export const sendFriendMessageFn = createServerFn({ method: "POST" })
 export const listFriendMessagesFn = createServerFn({ method: "POST" })
   .inputValidator(z.object({ clientId: uuid, otherId: uuid }).parse)
   .handler(async ({ data }) => {
+    const { listFriendMessages } = await import("@/server/matchmaking.server");
     const messages = await listFriendMessages(data.clientId, data.otherId);
     return { messages };
   });
