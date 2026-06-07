@@ -17,7 +17,7 @@ import {
   reportPartner,
   sendFriendMessage,
   sendMessage,
-} from "./matchmaking.server";
+} from "@/server/matchmaking.server";
 
 const uuid = z.string().uuid();
 const nickname = z.string().trim().min(1).max(24);
