@@ -1,23 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import {
-  addFriend,
-  applyDecision,
-  blockPartner,
-  createAvatarUploadUrl,
-  enforceTimeout,
-  findActiveSession,
-  joinQueueAndTryMatch,
-  leaveQueue,
-  leaveSession,
-  listFriendMessages,
-  listFriends,
-  removeFriend,
-  reportPartner,
-  sendFriendMessage,
-  sendMessage,
-} from "@/server/matchmaking.server";
 
 const uuid = z.string().uuid();
 const nickname = z.string().trim().min(1).max(24);
@@ -39,6 +22,7 @@ export const joinQueueFn = createServerFn({ method: "POST" })
     z.object({ clientId: uuid, profile: profileSchema, lobby }).parse,
   )
   .handler(async ({ data, context }) => {
+    const { joinQueueAndTryMatch } = await import("@/server/matchmaking.server");
     return joinQueueAndTryMatch(data.clientId, data.profile, data.lobby, context.userId as string);
   });
 
@@ -51,18 +35,21 @@ export const decideFn = createServerFn({ method: "POST" })
     }).parse,
   )
   .handler(async ({ data }) => {
+    const { applyDecision } = await import("@/server/matchmaking.server");
     return applyDecision(data.sessionId, data.clientId, data.decision);
   });
 
 export const enforceTimeoutFn = createServerFn({ method: "POST" })
   .inputValidator(z.object({ sessionId: uuid }).parse)
   .handler(async ({ data }) => {
+    const { enforceTimeout } = await import("@/server/matchmaking.server");
     return enforceTimeout(data.sessionId);
   });
 
 export const leaveSessionFn = createServerFn({ method: "POST" })
   .inputValidator(z.object({ sessionId: uuid, clientId: uuid }).parse)
   .handler(async ({ data }) => {
+    const { leaveSession } = await import("@/server/matchmaking.server");
     await leaveSession(data.sessionId, data.clientId);
     return { ok: true };
   });
@@ -76,6 +63,7 @@ export const sendMessageFn = createServerFn({ method: "POST" })
     }).parse,
   )
   .handler(async ({ data }) => {
+    const { sendMessage } = await import("@/server/matchmaking.server");
     await sendMessage(data.sessionId, data.clientId, data.content);
     return { ok: true };
   });
@@ -84,6 +72,7 @@ export const leaveQueueFn = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator(z.object({ clientId: uuid }).parse)
   .handler(async ({ data, context }) => {
+    const { leaveQueue } = await import("@/server/matchmaking.server");
     await leaveQueue(data.clientId, context.userId as string);
     return { ok: true };
   });
@@ -91,6 +80,7 @@ export const leaveQueueFn = createServerFn({ method: "POST" })
 export const findActiveSessionFn = createServerFn({ method: "POST" })
   .inputValidator(z.object({ clientId: uuid }).parse)
   .handler(async ({ data }) => {
+    const { findActiveSession } = await import("@/server/matchmaking.server");
     const session = await findActiveSession(data.clientId);
     return { session };
   });
