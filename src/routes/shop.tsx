@@ -9,7 +9,7 @@ import {
   getBalanceFn,
   purchaseCoinsFn,
   claimAdRewardFn,
-} from "@/server/coins.functions";
+} from "@/lib/coins.functions";
 import WatchAdDialog from "@/components/WatchAdDialog";
 
 export const Route = createFileRoute("/shop")({
