@@ -7,7 +7,7 @@ import {
   claimAdReward,
   getBalance,
   purchaseCoins,
-} from "./coins.server";
+} from "@/server/coins.server";
 
 export const getBalanceFn = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
