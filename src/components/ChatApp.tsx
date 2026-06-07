@@ -874,10 +874,6 @@ function Header({
             )}
           </Button>
         )}
-        <Badge variant="outline" className="border-[var(--neon-cyan)]/40 text-[var(--neon-cyan)]">
-          <span className="mr-1 inline-block h-1.5 w-1.5 rounded-full bg-[var(--neon-cyan)] animate-pulse" />
-          live
-        </Badge>
       </div>
     </header>
   );
@@ -912,7 +908,8 @@ function HomeScreen({
 
   const ageNum = Number.parseInt(age, 10);
   const ageValid = Number.isFinite(ageNum) && ageNum >= 18 && ageNum <= 120;
-  const valid = nickname.trim().length >= 1 && nickname.trim().length <= 24 && ageValid;
+  const genderValid = gender === "male" || gender === "female";
+  const valid = nickname.trim().length >= 1 && nickname.trim().length <= 24 && ageValid && genderValid;
 
   async function handleFile(file: File) {
     if (!file.type.startsWith("image/")) return;
@@ -1067,10 +1064,8 @@ function HomeScreen({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="unspecified">Prefer not to say</SelectItem>
                 <SelectItem value="male">Male</SelectItem>
                 <SelectItem value="female">Female</SelectItem>
-                
               </SelectContent>
             </Select>
           </div>
@@ -1153,12 +1148,6 @@ function LobbyScreen({
 
   function tryChoose(lobby: Lobby) {
     const meta = lobbies.find((l) => l.id === lobby)!;
-    if (meta.requireGender && profileGender !== meta.requireGender) {
-      toast.error(
-        `This lobby requires your profile gender to be ${meta.requireGender === "female" ? "Female" : "Male"}.`,
-      );
-      return;
-    }
     if (meta.cost > balance) {
       toast.error("Not enough coins. Visit the shop to top up.");
       return;
@@ -1226,9 +1215,6 @@ function LobbyScreen({
           Get more →
         </Link>
       </div>
-      <p className="mt-2 text-center text-[11px] text-muted-foreground">
-        New users start with <span className="font-bold text-[var(--neon-cyan)]">50 free coins</span> 🎉
-      </p>
 
       <div className="mt-4 flex justify-center">
         <Button variant="ghost" size="sm" onClick={onCancel} className="text-muted-foreground">
