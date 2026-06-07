@@ -908,7 +908,8 @@ function HomeScreen({
 
   const ageNum = Number.parseInt(age, 10);
   const ageValid = Number.isFinite(ageNum) && ageNum >= 18 && ageNum <= 120;
-  const valid = nickname.trim().length >= 1 && nickname.trim().length <= 24 && ageValid;
+  const genderValid = gender === "male" || gender === "female";
+  const valid = nickname.trim().length >= 1 && nickname.trim().length <= 24 && ageValid && genderValid;
 
   async function handleFile(file: File) {
     if (!file.type.startsWith("image/")) return;
