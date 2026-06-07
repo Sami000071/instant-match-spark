@@ -874,10 +874,6 @@ function Header({
             )}
           </Button>
         )}
-        <Badge variant="outline" className="border-[var(--neon-cyan)]/40 text-[var(--neon-cyan)]">
-          <span className="mr-1 inline-block h-1.5 w-1.5 rounded-full bg-[var(--neon-cyan)] animate-pulse" />
-          live
-        </Badge>
       </div>
     </header>
   );
