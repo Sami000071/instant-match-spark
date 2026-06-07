@@ -1148,12 +1148,6 @@ function LobbyScreen({
 
   function tryChoose(lobby: Lobby) {
     const meta = lobbies.find((l) => l.id === lobby)!;
-    if (meta.requireGender && profileGender !== meta.requireGender) {
-      toast.error(
-        `This lobby requires your profile gender to be ${meta.requireGender === "female" ? "Female" : "Male"}.`,
-      );
-      return;
-    }
     if (meta.cost > balance) {
       toast.error("Not enough coins. Visit the shop to top up.");
       return;
