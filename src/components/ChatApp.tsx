@@ -1215,9 +1215,6 @@ function LobbyScreen({
           Get more →
         </Link>
       </div>
-      <p className="mt-2 text-center text-[11px] text-muted-foreground">
-        New users start with <span className="font-bold text-[var(--neon-cyan)]">50 free coins</span> 🎉
-      </p>
 
       <div className="mt-4 flex justify-center">
         <Button variant="ghost" size="sm" onClick={onCancel} className="text-muted-foreground">
