@@ -122,7 +122,13 @@ export async function joinQueueAndTryMatch(
     .order("created_at", { ascending: true })
     .limit(20);
 
-  const partner = waiters?.find((w) => !blocked.has(w.client_id));
+  // In gendered lobbies, only match with partners whose gender matches the lobby.
+  const requiredGender = lobbyRequiresGender(lobby);
+  const partner = waiters?.find(
+    (w) =>
+      !blocked.has(w.client_id) &&
+      (requiredGender ? w.gender === requiredGender : true),
+  );
 
   if (partner) {
     // Atomically remove the partner from queue (only succeeds if still there)
