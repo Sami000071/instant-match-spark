@@ -98,14 +98,11 @@ export async function joinQueueAndTryMatch(
   const existing = await findActiveSession(clientId);
   if (existing) return { session: existing };
 
-  // Premium lobbies require auth, gender match, and a coin payment.
+  // Premium lobbies require auth and a coin payment. Anyone can enter — the
+  // matching step filters partners by the lobby's gender below.
   let charged = 0;
   if (lobby !== "any") {
     if (!authUserId) throw new Error("AUTH_REQUIRED");
-    const requiredGender = lobbyRequiresGender(lobby);
-    if (requiredGender && profile.gender !== requiredGender) {
-      throw new Error("GENDER_MISMATCH");
-    }
     // Atomic spend — throws INSUFFICIENT_FUNDS if balance too low.
     await spendCoins(authUserId, LOBBY_COST, "spend_lobby", { lobby });
     charged = LOBBY_COST;
