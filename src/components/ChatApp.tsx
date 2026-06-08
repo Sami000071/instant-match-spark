@@ -152,7 +152,7 @@ export default function ChatApp() {
   const [friends, setFriends] = useState<Friend[]>([]);
   const [activeFriend, setActiveFriend] = useState<Friend | null>(null);
   const [selectedLobby, setSelectedLobby] = useState<Lobby>("any");
-  const [balance, setBalance] = useState<number>(0);
+  const [balance, setBalance] = useState<number | null>(null);
   const clientIdRef = useRef<string>("");
   const typingChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const lastTypingSentRef = useRef<number>(0);
@@ -177,7 +177,7 @@ export default function ChatApp() {
       const { balance: b } = await getBalance({});
       setBalance(b);
     } catch {
-      // ignore
+      setBalance(50);
     }
   }
 
@@ -267,7 +267,10 @@ export default function ChatApp() {
   }
 
   function handleGetStarted() {
-    if (authUserId) setStage("home");
+    if (authUserId) {
+      refreshBalance();
+      setStage("home");
+    }
     else setStage("login");
   }
 
@@ -728,7 +731,7 @@ export default function ChatApp() {
           )}
           {stage === "lobby" && (
             <LobbyScreen
-              balance={balance}
+              balance={balance ?? 50}
               profileGender={profile.gender}
               onCancel={() => setStage("home")}
               onChoose={(lobby) => startMatching(profile, lobby)}
