@@ -732,7 +732,6 @@ export default function ChatApp() {
           {stage === "lobby" && (
             <LobbyScreen
               balance={balance ?? 50}
-              profileGender={profile.gender}
               onCancel={() => setStage("home")}
               onChoose={(lobby) => startMatching(profile, lobby)}
             />
@@ -856,8 +855,7 @@ function Header({
             className="flex h-8 items-center gap-1.5 rounded-md border border-[var(--neon-cyan)]/40 px-2.5 text-xs font-bold text-[var(--neon-cyan)] hover:bg-[var(--neon-cyan)]/10"
             title="Shop"
           >
-            <Coins className="h-3.5 w-3.5" />
-            <span className="tabular-nums">{balance}</span>
+            <span className="tabular-nums">coins: {balance ?? 50}</span>
             <ShoppingBag className="h-3.5 w-3.5 opacity-70" />
           </Link>
         )}
