@@ -13,6 +13,8 @@ export const COIN_PACKAGES: Record<string, { coins: number; priceUsd: number; la
   pro: { coins: 1000, priceUsd: 5.99, label: "Pro" },
 };
 
+export const SIGNUP_BONUS = 50;
+
 export async function getBalance(userId: string): Promise<number> {
   const { data } = await supabaseAdmin
     .from("wallets")
@@ -20,8 +22,18 @@ export async function getBalance(userId: string): Promise<number> {
     .eq("user_id", userId)
     .maybeSingle();
   if (data) return data.balance as number;
-  await supabaseAdmin.from("wallets").insert({ user_id: userId, balance: 0 });
-  return 0;
+  // First time we see this user — grant the signup bonus.
+  const { data: inserted } = await supabaseAdmin
+    .from("wallets")
+    .insert({ user_id: userId, balance: SIGNUP_BONUS })
+    .select("balance")
+    .single();
+  await supabaseAdmin.from("coin_transactions").insert({
+    user_id: userId,
+    delta: SIGNUP_BONUS,
+    reason: "signup_bonus",
+  });
+  return (inserted?.balance as number) ?? SIGNUP_BONUS;
 }
 
 export async function creditCoins(
