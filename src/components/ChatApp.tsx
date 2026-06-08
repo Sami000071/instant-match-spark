@@ -152,7 +152,7 @@ export default function ChatApp() {
   const [friends, setFriends] = useState<Friend[]>([]);
   const [activeFriend, setActiveFriend] = useState<Friend | null>(null);
   const [selectedLobby, setSelectedLobby] = useState<Lobby>("any");
-  const [balance, setBalance] = useState<number>(0);
+  const [balance, setBalance] = useState<number | null>(null);
   const clientIdRef = useRef<string>("");
   const typingChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const lastTypingSentRef = useRef<number>(0);
@@ -177,7 +177,7 @@ export default function ChatApp() {
       const { balance: b } = await getBalance({});
       setBalance(b);
     } catch {
-      // ignore
+      setBalance(50);
     }
   }
 
@@ -267,7 +267,10 @@ export default function ChatApp() {
   }
 
   function handleGetStarted() {
-    if (authUserId) setStage("home");
+    if (authUserId) {
+      refreshBalance();
+      setStage("home");
+    }
     else setStage("login");
   }
 
@@ -728,8 +731,7 @@ export default function ChatApp() {
           )}
           {stage === "lobby" && (
             <LobbyScreen
-              balance={balance}
-              profileGender={profile.gender}
+              balance={balance ?? 50}
               onCancel={() => setStage("home")}
               onChoose={(lobby) => startMatching(profile, lobby)}
             />
@@ -853,8 +855,7 @@ function Header({
             className="flex h-8 items-center gap-1.5 rounded-md border border-[var(--neon-cyan)]/40 px-2.5 text-xs font-bold text-[var(--neon-cyan)] hover:bg-[var(--neon-cyan)]/10"
             title="Shop"
           >
-            <Coins className="h-3.5 w-3.5" />
-            <span className="tabular-nums">{balance}</span>
+            <span className="tabular-nums">coins: {balance ?? 50}</span>
             <ShoppingBag className="h-3.5 w-3.5 opacity-70" />
           </Link>
         )}
@@ -1122,17 +1123,13 @@ const LOBBY_COST = 24;
 
 function LobbyScreen({
   balance,
-  profileGender,
   onCancel,
   onChoose,
 }: {
   balance: number;
-  profileGender: Profile["gender"];
   onCancel: () => void;
   onChoose: (lobby: Lobby) => void;
 }) {
-  const [pending, setPending] = useState<Lobby | null>(null);
-
   const lobbies: {
     id: Lobby;
     label: string;
@@ -1152,11 +1149,7 @@ function LobbyScreen({
       toast.error("Not enough coins. Visit the shop to top up.");
       return;
     }
-    if (meta.cost === 0) {
-      onChoose(lobby);
-      return;
-    }
-    setPending(lobby);
+    onChoose(lobby);
   }
 
   return (
@@ -1222,34 +1215,6 @@ function LobbyScreen({
         </Button>
       </div>
 
-      <Dialog open={pending !== null} onOpenChange={(o) => !o && setPending(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Spend {LOBBY_COST} coins?</DialogTitle>
-            <DialogDescription>
-              You'll be matched only with{" "}
-              {pending === "girls" ? "women" : pending === "boys" ? "men" : "anyone"} in this
-              lobby. Coins are refunded if you leave before matching.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setPending(null)}>
-              Cancel
-            </Button>
-            <Button
-              className="bg-[var(--gradient-accent)] text-background hover:opacity-90"
-              onClick={() => {
-                const l = pending!;
-                setPending(null);
-                onChoose(l);
-              }}
-            >
-              <Coins className="mr-1 h-4 w-4" />
-              Confirm
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
