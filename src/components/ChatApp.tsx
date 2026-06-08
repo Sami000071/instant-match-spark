@@ -1123,17 +1123,13 @@ const LOBBY_COST = 24;
 
 function LobbyScreen({
   balance,
-  profileGender,
   onCancel,
   onChoose,
 }: {
   balance: number;
-  profileGender: Profile["gender"];
   onCancel: () => void;
   onChoose: (lobby: Lobby) => void;
 }) {
-  const [pending, setPending] = useState<Lobby | null>(null);
-
   const lobbies: {
     id: Lobby;
     label: string;
@@ -1153,11 +1149,7 @@ function LobbyScreen({
       toast.error("Not enough coins. Visit the shop to top up.");
       return;
     }
-    if (meta.cost === 0) {
-      onChoose(lobby);
-      return;
-    }
-    setPending(lobby);
+    onChoose(lobby);
   }
 
   return (
@@ -1223,34 +1215,6 @@ function LobbyScreen({
         </Button>
       </div>
 
-      <Dialog open={pending !== null} onOpenChange={(o) => !o && setPending(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Spend {LOBBY_COST} coins?</DialogTitle>
-            <DialogDescription>
-              You'll be matched only with{" "}
-              {pending === "girls" ? "women" : pending === "boys" ? "men" : "anyone"} in this
-              lobby. Coins are refunded if you leave before matching.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setPending(null)}>
-              Cancel
-            </Button>
-            <Button
-              className="bg-[var(--gradient-accent)] text-background hover:opacity-90"
-              onClick={() => {
-                const l = pending!;
-                setPending(null);
-                onChoose(l);
-              }}
-            >
-              <Coins className="mr-1 h-4 w-4" />
-              Confirm
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
