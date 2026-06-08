@@ -98,10 +98,17 @@ export async function joinQueueAndTryMatch(
   const existing = await findActiveSession(clientId);
   if (existing) return { session: existing };
 
-  // Premium lobbies require auth and a coin payment. Anyone can enter — the
-  // matching step filters partners by the lobby's gender below.
+  const { data: queued } = await supabaseAdmin
+    .from("queue")
+    .select("lobby")
+    .eq("client_id", clientId)
+    .maybeSingle();
+  const alreadyQueuedInLobby = queued?.lobby === lobby;
+
+  // Premium lobbies require auth and a coin payment once per queue entry.
+  // Anyone can enter — the matching step filters partners by the lobby's gender below.
   let charged = 0;
-  if (lobby !== "any") {
+  if (lobby !== "any" && !alreadyQueuedInLobby) {
     if (!authUserId) throw new Error("AUTH_REQUIRED");
     // Atomic spend — throws INSUFFICIENT_FUNDS if balance too low.
     await spendCoins(authUserId, LOBBY_COST, "spend_lobby", { lobby });
