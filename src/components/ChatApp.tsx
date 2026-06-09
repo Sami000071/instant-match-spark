@@ -593,6 +593,10 @@ export default function ChatApp() {
     setEndedReason(null);
     setPartnerTyping(false);
     setStage("matching");
+    const previousBalance = balance;
+    if (lobby !== "any" && typeof previousBalance === "number") {
+      setBalance(Math.max(0, previousBalance - 24));
+    }
     try {
       const headers = await getAuthHeaders();
       const res = await join({
@@ -611,7 +615,6 @@ export default function ChatApp() {
       if (lobby !== "any") {
         toast.success(`Joined ${lobby === "girls" ? "Girls" : "Boys"} lobby · -24 coins`);
         if (typeof res.balance !== "number") {
-          setBalance((b) => (typeof b === "number" ? Math.max(0, b - 24) : b));
           refreshBalance();
         }
       }
@@ -624,6 +627,7 @@ export default function ChatApp() {
       } else {
         toast.error(msg);
       }
+      setBalance(previousBalance);
       setStage("lobby");
     }
   }
