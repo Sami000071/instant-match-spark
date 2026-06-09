@@ -93,7 +93,7 @@ export async function joinQueueAndTryMatch(
   profile: Profile,
   lobby: Lobby = "any",
   authUserId: string | null = null,
-): Promise<{ session: MatchSession | null; charged?: number }> {
+): Promise<{ session: MatchSession | null; charged?: number; balance?: number }> {
   // Reconnect path: if already in an active session, return it.
   const existing = await findActiveSession(clientId);
   if (existing) return { session: existing };
@@ -108,10 +108,11 @@ export async function joinQueueAndTryMatch(
   // Premium lobbies require auth and a coin payment once per queue entry.
   // Anyone can enter — the matching step filters partners by the lobby's gender below.
   let charged = 0;
+  let balance: number | undefined;
   if (lobby !== "any" && !alreadyQueuedInLobby) {
     if (!authUserId) throw new Error("AUTH_REQUIRED");
     // Atomic spend — throws INSUFFICIENT_FUNDS if balance too low.
-    await spendCoins(authUserId, LOBBY_COST, "spend_lobby", { lobby });
+    balance = await spendCoins(authUserId, LOBBY_COST, "spend_lobby", { lobby });
     charged = LOBBY_COST;
   }
 
@@ -166,7 +167,7 @@ export async function joinQueueAndTryMatch(
         .select()
         .single();
       if (error) throw error;
-      return { session: session as MatchSession, charged };
+      return { session: session as MatchSession, charged, balance };
     }
   }
 
@@ -179,7 +180,7 @@ export async function joinQueueAndTryMatch(
     avatar_url: profile.avatarUrl,
     lobby,
   });
-  return { session: null, charged };
+  return { session: null, charged, balance };
 }
 
 // Apply a decision. If both accepted -> chatting. If any skip or deadline passed -> ended.

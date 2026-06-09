@@ -40,11 +40,19 @@ function ShopPage() {
   const buy = useServerFn(purchaseCoinsFn);
   const claim = useServerFn(claimAdRewardFn);
 
+  async function getAuthHeaders(): Promise<HeadersInit> {
+    const { data } = await supabase.auth.getSession();
+    const token = data.session?.access_token;
+    return token ? { Authorization: `Bearer ${token}` } : {};
+  }
+
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
       if (data.session?.user) {
         setAuthed(true);
-        getBal({ data: undefined as never })
+        const token = data.session.access_token;
+        const headers: HeadersInit = token ? { Authorization: `Bearer ${token}` } : {};
+        getBal({ data: undefined as never, headers })
           .then(({ balance }) => setBalance(balance))
           .catch(() => {});
       }
@@ -58,7 +66,8 @@ function ShopPage() {
     }
     setBusy(id);
     try {
-      const { balance, coins } = await buy({ data: { packageId: id } });
+      const headers = await getAuthHeaders();
+      const { balance, coins } = await buy({ data: { packageId: id }, headers });
       setBalance(balance);
       toast.success(`Purchase successful — +${coins} coins`);
     } catch (e) {
@@ -70,7 +79,8 @@ function ShopPage() {
 
   async function handleAdComplete() {
     try {
-      const { balance, reward } = await claim({ data: undefined as never });
+      const headers = await getAuthHeaders();
+      const { balance, reward } = await claim({ data: undefined as never, headers });
       setBalance(balance);
       toast.success(`You earned ${reward} coins`);
     } catch (e) {

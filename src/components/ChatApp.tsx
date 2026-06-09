@@ -172,9 +172,27 @@ export default function ChatApp() {
   const removeFriendCall = useServerFn(removeFriendFn);
   const getBalance = useServerFn(getBalanceFn);
 
+  async function getAuthHeaders(): Promise<HeadersInit> {
+    const { data } = await supabase.auth.getSession();
+    const token = data.session?.access_token;
+    return token ? { Authorization: `Bearer ${token}` } : {};
+  }
+
   async function refreshBalance() {
     try {
-      const { balance: b } = await getBalance({});
+      if (authUserId) {
+        const { data } = await supabase
+          .from("wallets")
+          .select("balance")
+          .eq("user_id", authUserId)
+          .maybeSingle();
+        if (typeof data?.balance === "number") {
+          setBalance(data.balance);
+          return;
+        }
+      }
+      const headers = await getAuthHeaders();
+      const { balance: b } = await getBalance({ headers });
       setBalance(b);
     } catch (e) {
       console.error("refreshBalance failed", e);
@@ -383,7 +401,9 @@ export default function ChatApp() {
   }
 
   async function onReturnHomeFromMatching() {
-    await leaveQ({ data: { clientId: clientIdRef.current } }).catch(() => {});
+    const headers = await getAuthHeaders();
+    await leaveQ({ data: { clientId: clientIdRef.current }, headers }).catch(() => {});
+    await refreshBalance();
     goHome();
   }
 
@@ -440,9 +460,12 @@ export default function ChatApp() {
     const poll = async () => {
       if (cancelled) return;
       try {
+        const headers = await getAuthHeaders();
         const res = await join({
           data: { clientId: clientIdRef.current, profile, lobby: selectedLobby },
+          headers,
         });
+        if (typeof res.balance === "number") setBalance(res.balance);
         if (cancelled) return;
         if (res.session) {
           setSession(res.session as SessionRow);
@@ -558,7 +581,11 @@ export default function ChatApp() {
   useEffect(() => {
     const handler = () => {
       const cid = clientIdRef.current;
-      if (stage === "matching") leaveQ({ data: { clientId: cid } }).catch(() => {});
+      if (stage === "matching") {
+        getAuthHeaders()
+          .then((headers) => leaveQ({ data: { clientId: cid }, headers }))
+          .catch(() => {});
+      }
     };
     window.addEventListener("beforeunload", handler);
     return () => window.removeEventListener("beforeunload", handler);
@@ -577,22 +604,31 @@ export default function ChatApp() {
     setEndedReason(null);
     setPartnerTyping(false);
     setStage("matching");
+    const previousBalance = balance;
+    if (lobby !== "any") {
+      const visibleBalance = typeof previousBalance === "number" ? previousBalance : 50;
+      setBalance(Math.max(0, visibleBalance - 24));
+    }
     try {
+      const headers = await getAuthHeaders();
       const res = await join({
         data: {
           clientId: clientIdRef.current,
           profile: p,
           lobby,
         },
+        headers,
       });
+      if (typeof res.balance === "number") setBalance(res.balance);
       if (res.session) {
         setSession(res.session as SessionRow);
         setStage(res.session.status === "chatting" ? "chatting" : "deciding");
       }
       if (lobby !== "any") {
         toast.success(`Joined ${lobby === "girls" ? "Girls" : "Boys"} lobby · -24 coins`);
-        setBalance((b) => (typeof b === "number" ? Math.max(0, b - 24) : b));
-        refreshBalance();
+        if (typeof res.balance !== "number") {
+          refreshBalance();
+        }
       }
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Could not join lobby";
@@ -603,6 +639,7 @@ export default function ChatApp() {
       } else {
         toast.error(msg);
       }
+      setBalance(previousBalance);
       setStage("lobby");
     }
   }
@@ -638,7 +675,8 @@ export default function ChatApp() {
   }
 
   async function onCancelMatching() {
-    await leaveQ({ data: { clientId: clientIdRef.current } });
+    const headers = await getAuthHeaders();
+    await leaveQ({ data: { clientId: clientIdRef.current }, headers });
     setStage("home");
     refreshBalance();
   }
