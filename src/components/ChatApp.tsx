@@ -260,6 +260,25 @@ export default function ChatApp() {
     return () => sub.subscription.unsubscribe();
   }, [findActive]);
 
+  // Realtime: keep coin balance in sync with wallet changes.
+  useEffect(() => {
+    if (!authUserId) return;
+    const ch = supabase
+      .channel(`wallet:${authUserId}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "wallets", filter: `user_id=eq.${authUserId}` },
+        (payload) => {
+          const row = (payload.new ?? payload.old) as { balance?: number } | null;
+          if (row && typeof row.balance === "number") setBalance(row.balance);
+        },
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(ch);
+    };
+  }, [authUserId]);
+
   async function handleLogout() {
     await supabase.auth.signOut();
     setProfile(EMPTY_PROFILE);
@@ -572,6 +591,7 @@ export default function ChatApp() {
       }
       if (lobby !== "any") {
         toast.success(`Joined ${lobby === "girls" ? "Girls" : "Boys"} lobby · -24 coins`);
+        setBalance((b) => (typeof b === "number" ? Math.max(0, b - 24) : b));
         refreshBalance();
       }
     } catch (e) {
@@ -598,6 +618,7 @@ export default function ChatApp() {
       setEndedReason(reasonText(updated as SessionRow, clientIdRef.current));
       setStage("ended");
     }
+    refreshBalance();
   }
 
   async function onLeaveChat() {
