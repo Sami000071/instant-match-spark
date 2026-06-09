@@ -172,9 +172,16 @@ export default function ChatApp() {
   const removeFriendCall = useServerFn(removeFriendFn);
   const getBalance = useServerFn(getBalanceFn);
 
+  async function getAuthHeaders(): Promise<HeadersInit> {
+    const { data } = await supabase.auth.getSession();
+    const token = data.session?.access_token;
+    return token ? { Authorization: `Bearer ${token}` } : {};
+  }
+
   async function refreshBalance() {
     try {
-      const { balance: b } = await getBalance({});
+      const headers = await getAuthHeaders();
+      const { balance: b } = await getBalance({ headers });
       setBalance(b);
     } catch (e) {
       console.error("refreshBalance failed", e);
@@ -440,9 +447,12 @@ export default function ChatApp() {
     const poll = async () => {
       if (cancelled) return;
       try {
+        const headers = await getAuthHeaders();
         const res = await join({
           data: { clientId: clientIdRef.current, profile, lobby: selectedLobby },
+          headers,
         });
+        if (typeof res.balance === "number") setBalance(res.balance);
         if (cancelled) return;
         if (res.session) {
           setSession(res.session as SessionRow);
@@ -578,21 +588,26 @@ export default function ChatApp() {
     setPartnerTyping(false);
     setStage("matching");
     try {
+      const headers = await getAuthHeaders();
       const res = await join({
         data: {
           clientId: clientIdRef.current,
           profile: p,
           lobby,
         },
+        headers,
       });
+      if (typeof res.balance === "number") setBalance(res.balance);
       if (res.session) {
         setSession(res.session as SessionRow);
         setStage(res.session.status === "chatting" ? "chatting" : "deciding");
       }
       if (lobby !== "any") {
         toast.success(`Joined ${lobby === "girls" ? "Girls" : "Boys"} lobby · -24 coins`);
-        setBalance((b) => (typeof b === "number" ? Math.max(0, b - 24) : b));
-        refreshBalance();
+        if (typeof res.balance !== "number") {
+          setBalance((b) => (typeof b === "number" ? Math.max(0, b - 24) : b));
+          refreshBalance();
+        }
       }
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Could not join lobby";
