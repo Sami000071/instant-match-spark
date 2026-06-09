@@ -1,18 +1,10 @@
 // Server-only helpers for matchmaking. Never imported from client code.
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import type { Database } from "@/integrations/supabase/types";
-import { LOBBY_COST, creditCoins, spendCoins } from "./coins.server";
 
 type SessionUpdate = Database["public"]["Tables"]["match_sessions"]["Update"];
 
 const DECIDE_WINDOW_MS = 5000;
-export type Lobby = "any" | "girls" | "boys";
-
-function lobbyRequiresGender(lobby: Lobby): "female" | "male" | null {
-  if (lobby === "girls") return "female";
-  if (lobby === "boys") return "male";
-  return null;
-}
 
 export type MatchSession = {
   id: string;
@@ -91,51 +83,25 @@ async function getBlockedSet(clientId: string): Promise<Set<string>> {
 export async function joinQueueAndTryMatch(
   clientId: string,
   profile: Profile,
-  lobby: Lobby = "any",
-  authUserId: string | null = null,
-): Promise<{ session: MatchSession | null; charged?: number }> {
+): Promise<{ session: MatchSession | null }> {
   // Reconnect path: if already in an active session, return it.
   const existing = await findActiveSession(clientId);
   if (existing) return { session: existing };
-
-  const { data: queued } = await supabaseAdmin
-    .from("queue")
-    .select("lobby")
-    .eq("client_id", clientId)
-    .maybeSingle();
-  const alreadyQueuedInLobby = queued?.lobby === lobby;
-
-  // Premium lobbies require auth and a coin payment once per queue entry.
-  // Anyone can enter — the matching step filters partners by the lobby's gender below.
-  let charged = 0;
-  if (lobby !== "any" && !alreadyQueuedInLobby) {
-    if (!authUserId) throw new Error("AUTH_REQUIRED");
-    // Atomic spend — throws INSUFFICIENT_FUNDS if balance too low.
-    await spendCoins(authUserId, LOBBY_COST, "spend_lobby", { lobby });
-    charged = LOBBY_COST;
-  }
 
   // Clean up any prior queue entries first
   await supabaseAdmin.from("queue").delete().eq("client_id", clientId);
 
   const blocked = await getBlockedSet(clientId);
 
-  // Find another waiter in the same lobby (oldest first), filtering blocked pairs.
+  // Find another waiter (oldest first), filtering out blocked pairs.
   const { data: waiters } = await supabaseAdmin
     .from("queue")
     .select("*")
     .neq("client_id", clientId)
-    .eq("lobby", lobby)
     .order("created_at", { ascending: true })
     .limit(20);
 
-  // In gendered lobbies, only match with partners whose gender matches the lobby.
-  const requiredGender = lobbyRequiresGender(lobby);
-  const partner = waiters?.find(
-    (w) =>
-      !blocked.has(w.client_id) &&
-      (requiredGender ? w.gender === requiredGender : true),
-  );
+  const partner = waiters?.find((w) => !blocked.has(w.client_id));
 
   if (partner) {
     // Atomically remove the partner from queue (only succeeds if still there)
@@ -161,12 +127,11 @@ export async function joinQueueAndTryMatch(
           user_b_gender: profile.gender,
           user_b_avatar_url: profile.avatarUrl,
           decide_deadline: deadline,
-          lobby,
         })
         .select()
         .single();
       if (error) throw error;
-      return { session: session as MatchSession, charged };
+      return { session: session as MatchSession };
     }
   }
 
@@ -177,9 +142,8 @@ export async function joinQueueAndTryMatch(
     country: profile.country,
     gender: profile.gender,
     avatar_url: profile.avatarUrl,
-    lobby,
   });
-  return { session: null, charged };
+  return { session: null };
 }
 
 // Apply a decision. If both accepted -> chatting. If any skip or deadline passed -> ended.
@@ -289,19 +253,8 @@ export async function sendMessage(sessionId: string, clientId: string, content: 
   if (error) throw error;
 }
 
-export async function leaveQueue(clientId: string, authUserId: string | null = null) {
-  // If the user was queued in a premium lobby, refund the coin cost.
-  const { data: rows } = await supabaseAdmin
-    .from("queue")
-    .delete()
-    .eq("client_id", clientId)
-    .select("lobby");
-  if (authUserId && rows && rows.length > 0) {
-    const lobby = rows[0].lobby as string;
-    if (lobby && lobby !== "any") {
-      await creditCoins(authUserId, LOBBY_COST, "refund_lobby", { lobby }).catch(() => {});
-    }
-  }
+export async function leaveQueue(clientId: string) {
+  await supabaseAdmin.from("queue").delete().eq("client_id", clientId);
 }
 
 export async function reportPartner(args: {

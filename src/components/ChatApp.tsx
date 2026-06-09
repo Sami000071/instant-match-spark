@@ -1,7 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { Link } from "@tanstack/react-router";
-import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import {
   EMPTY_PROFILE,
@@ -29,8 +27,7 @@ import {
   reportPartnerFn,
   sendFriendMessageFn,
   sendMessageFn,
-} from "@/lib/matchmaking.functions";
-import { getBalanceFn } from "@/lib/coins.functions";
+} from "@/server/matchmaking.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -74,8 +71,6 @@ import {
   Globe2,
   MessageCircle,
   Clock,
-  Coins,
-  ShoppingBag,
 } from "lucide-react";
 
 
@@ -125,15 +120,12 @@ type Stage =
   | "intro"
   | "login"
   | "home"
-  | "lobby"
   | "matching"
   | "deciding"
   | "chatting"
   | "ended"
   | "friends"
   | "friend-chat";
-
-type Lobby = "any" | "girls" | "boys";
 
 export default function ChatApp() {
   const [stage, setStage] = useState<Stage>("intro");
@@ -151,8 +143,6 @@ export default function ChatApp() {
   const [friendStatus, setFriendStatus] = useState<"idle" | "pending" | "mutual">("idle");
   const [friends, setFriends] = useState<Friend[]>([]);
   const [activeFriend, setActiveFriend] = useState<Friend | null>(null);
-  const [selectedLobby, setSelectedLobby] = useState<Lobby>("any");
-  const [balance, setBalance] = useState<number | null>(null);
   const clientIdRef = useRef<string>("");
   const typingChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const lastTypingSentRef = useRef<number>(0);
@@ -170,16 +160,6 @@ export default function ChatApp() {
   const addFriendCall = useServerFn(addFriendFn);
   const listFriendsCall = useServerFn(listFriendsFn);
   const removeFriendCall = useServerFn(removeFriendFn);
-  const getBalance = useServerFn(getBalanceFn);
-
-  async function refreshBalance() {
-    try {
-      const { balance: b } = await getBalance({});
-      setBalance(b);
-    } catch (e) {
-      console.error("refreshBalance failed", e);
-    }
-  }
 
   // Load DB profile for the signed-in user. Sets clientIdRef to the stable
   // matching id stored in the profiles row.
@@ -260,25 +240,6 @@ export default function ChatApp() {
     return () => sub.subscription.unsubscribe();
   }, [findActive]);
 
-  // Realtime: keep coin balance in sync with wallet changes.
-  useEffect(() => {
-    if (!authUserId) return;
-    const ch = supabase
-      .channel(`wallet:${authUserId}`)
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "wallets", filter: `user_id=eq.${authUserId}` },
-        (payload) => {
-          const row = (payload.new ?? payload.old) as { balance?: number } | null;
-          if (row && typeof row.balance === "number") setBalance(row.balance);
-        },
-      )
-      .subscribe();
-    return () => {
-      supabase.removeChannel(ch);
-    };
-  }, [authUserId]);
-
   async function handleLogout() {
     await supabase.auth.signOut();
     setProfile(EMPTY_PROFILE);
@@ -286,10 +247,7 @@ export default function ChatApp() {
   }
 
   function handleGetStarted() {
-    if (authUserId) {
-      refreshBalance();
-      setStage("home");
-    }
+    if (authUserId) setStage("home");
     else setStage("login");
   }
 
@@ -303,7 +261,6 @@ export default function ChatApp() {
     if (!authUserId) return;
     if (stage === "intro" || stage === "login") setStage("home");
     refreshFriends();
-    refreshBalance();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authUserId]);
 
@@ -441,7 +398,7 @@ export default function ChatApp() {
       if (cancelled) return;
       try {
         const res = await join({
-          data: { clientId: clientIdRef.current, profile, lobby: selectedLobby },
+          data: { clientId: clientIdRef.current, profile },
         });
         if (cancelled) return;
         if (res.session) {
@@ -460,7 +417,7 @@ export default function ChatApp() {
       cancelled = true;
       if (timer) clearTimeout(timer);
     };
-  }, [stage, profile, join, selectedLobby]);
+  }, [stage, profile, join]);
 
   // realtime: subscribe to session updates while deciding/chatting
   useEffect(() => {
@@ -564,46 +521,27 @@ export default function ChatApp() {
     return () => window.removeEventListener("beforeunload", handler);
   }, [stage, leaveQ]);
 
-  async function startMatching(p: Profile, lobby: Lobby = selectedLobby) {
+  async function startMatching(p: Profile) {
     if (rematchTimerRef.current) {
       clearTimeout(rematchTimerRef.current);
       rematchTimerRef.current = null;
     }
     saveProfile(p);
     setProfile(p);
-    setSelectedLobby(lobby);
     setSession(null);
     setMessages([]);
     setEndedReason(null);
     setPartnerTyping(false);
     setStage("matching");
-    try {
-      const res = await join({
-        data: {
-          clientId: clientIdRef.current,
-          profile: p,
-          lobby,
-        },
-      });
-      if (res.session) {
-        setSession(res.session as SessionRow);
-        setStage(res.session.status === "chatting" ? "chatting" : "deciding");
-      }
-      if (lobby !== "any") {
-        toast.success(`Joined ${lobby === "girls" ? "Girls" : "Boys"} lobby · -24 coins`);
-        setBalance((b) => (typeof b === "number" ? Math.max(0, b - 24) : b));
-        refreshBalance();
-      }
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : "Could not join lobby";
-      if (msg.includes("INSUFFICIENT_FUNDS")) {
-        toast.error("Not enough coins. Visit the shop to top up.");
-      } else if (msg.includes("GENDER_MISMATCH")) {
-        toast.error("This lobby requires the matching gender on your profile.");
-      } else {
-        toast.error(msg);
-      }
-      setStage("lobby");
+    const res = await join({
+      data: {
+        clientId: clientIdRef.current,
+        profile: p,
+      },
+    });
+    if (res.session) {
+      setSession(res.session as SessionRow);
+      setStage(res.session.status === "chatting" ? "chatting" : "deciding");
     }
   }
 
@@ -618,7 +556,6 @@ export default function ChatApp() {
       setEndedReason(reasonText(updated as SessionRow, clientIdRef.current));
       setStage("ended");
     }
-    refreshBalance();
   }
 
   async function onLeaveChat() {
@@ -634,13 +571,12 @@ export default function ChatApp() {
     await leaveS({ data: { sessionId: session.id, clientId: clientIdRef.current } });
     setSession(null);
     setMessages([]);
-    startMatching(profile, selectedLobby);
+    startMatching(profile);
   }
 
   async function onCancelMatching() {
     await leaveQ({ data: { clientId: clientIdRef.current } });
     setStage("home");
-    refreshBalance();
   }
 
   async function onSend() {
@@ -703,7 +639,7 @@ export default function ChatApp() {
   // when ended → auto-rematch
   useEffect(() => {
     if (stage !== "ended") return;
-    rematchTimerRef.current = setTimeout(() => startMatching(profile, selectedLobby), 600);
+    rematchTimerRef.current = setTimeout(() => startMatching(profile), 600);
     return () => {
       if (rematchTimerRef.current) {
         clearTimeout(rematchTimerRef.current);
@@ -724,7 +660,6 @@ export default function ChatApp() {
           onHome={stage === "home" || stage === "intro" || stage === "login" ? undefined : goHome}
           onFriends={stage === "intro" || stage === "login" || !authUserId ? undefined : openFriends}
           friendsCount={friends.length}
-          balance={authUserId ? balance : null}
         />
         <div className="flex flex-1 items-center justify-center">
           {stage === "intro" && (
@@ -739,22 +674,11 @@ export default function ChatApp() {
           {stage === "home" && (
             <HomeScreen
               initial={profile}
-              onStart={(p) => {
-                setProfile(p);
-                saveProfile(p);
-                setStage("lobby");
-              }}
+              onStart={startMatching}
               onFriends={openFriends}
               onLogout={handleLogout}
               friendsCount={friends.length}
               onSave={saveProfileToDb}
-            />
-          )}
-          {stage === "lobby" && (
-            <LobbyScreen
-              balance={balance ?? 50}
-              onCancel={() => setStage("home")}
-              onChoose={(lobby) => startMatching(profile, lobby)}
             />
           )}
           {stage === "matching" && (
@@ -841,12 +765,10 @@ function Header({
   onHome,
   onFriends,
   friendsCount,
-  balance,
 }: {
   onHome?: () => void;
   onFriends?: () => void;
   friendsCount: number;
-  balance: number | null;
 }) {
   return (
     <header className="mb-6 flex items-center justify-between">
@@ -870,16 +792,6 @@ function Header({
         </div>
       </button>
       <div className="flex items-center gap-2">
-        {balance !== null && (
-          <Link
-            to="/shop"
-            className="flex h-8 items-center gap-1.5 rounded-md border border-[var(--neon-cyan)]/40 px-2.5 text-xs font-bold text-[var(--neon-cyan)] hover:bg-[var(--neon-cyan)]/10"
-            title="Shop"
-          >
-            <span className="tabular-nums">coins: {balance ?? 50}</span>
-            <ShoppingBag className="h-3.5 w-3.5 opacity-70" />
-          </Link>
-        )}
         {onFriends && (
           <Button
             variant="outline"
@@ -896,6 +808,10 @@ function Header({
             )}
           </Button>
         )}
+        <Badge variant="outline" className="border-[var(--neon-cyan)]/40 text-[var(--neon-cyan)]">
+          <span className="mr-1 inline-block h-1.5 w-1.5 rounded-full bg-[var(--neon-cyan)] animate-pulse" />
+          live
+        </Badge>
       </div>
     </header>
   );
@@ -930,8 +846,7 @@ function HomeScreen({
 
   const ageNum = Number.parseInt(age, 10);
   const ageValid = Number.isFinite(ageNum) && ageNum >= 18 && ageNum <= 120;
-  const genderValid = gender === "male" || gender === "female";
-  const valid = nickname.trim().length >= 1 && nickname.trim().length <= 24 && ageValid && genderValid;
+  const valid = nickname.trim().length >= 1 && nickname.trim().length <= 24 && ageValid;
 
   async function handleFile(file: File) {
     if (!file.type.startsWith("image/")) return;
@@ -1086,8 +1001,10 @@ function HomeScreen({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
+                <SelectItem value="unspecified">Prefer not to say</SelectItem>
                 <SelectItem value="male">Male</SelectItem>
                 <SelectItem value="female">Female</SelectItem>
+                <SelectItem value="nonbinary">Non-binary</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -1135,107 +1052,6 @@ function HomeScreen({
           Be kind. Reports & blocks keep the community safe. 18+ only.
         </p>
       </div>
-    </div>
-  );
-}
-
-// ─── Lobby Chooser ─────────────────────────────────────────────────────────
-const LOBBY_COST = 24;
-
-function LobbyScreen({
-  balance,
-  onCancel,
-  onChoose,
-}: {
-  balance: number;
-  onCancel: () => void;
-  onChoose: (lobby: Lobby) => void;
-}) {
-  const lobbies: {
-    id: Lobby;
-    label: string;
-    desc: string;
-    cost: number;
-    accent: string;
-    requireGender?: "female" | "male";
-  }[] = [
-    { id: "any", label: "Free lobby", desc: "Match with anyone, anywhere.", cost: 0, accent: "var(--neon-cyan)" },
-    { id: "girls", label: "Girls only", desc: "Only match with women.", cost: LOBBY_COST, accent: "var(--neon-pink)", requireGender: "female" },
-    { id: "boys", label: "Boys only", desc: "Only match with men.", cost: LOBBY_COST, accent: "var(--neon-lime)", requireGender: "male" },
-  ];
-
-  function tryChoose(lobby: Lobby) {
-    const meta = lobbies.find((l) => l.id === lobby)!;
-    if (meta.cost > balance) {
-      toast.error("Not enough coins. Visit the shop to top up.");
-      return;
-    }
-    onChoose(lobby);
-  }
-
-  return (
-    <div className="w-full max-w-md animate-fade-up">
-      <div className="mb-6 text-center">
-        <h2 className="text-4xl font-black tracking-tight">
-          Pick a <span className="text-gradient">lobby</span>
-        </h2>
-        <p className="mt-2 text-sm text-muted-foreground">
-          Filtered lobbies cost coins. Refunded if you leave before matching.
-        </p>
-      </div>
-
-      <div className="space-y-3">
-        {lobbies.map((l) => (
-          <button
-            key={l.id}
-            type="button"
-            onClick={() => tryChoose(l.id)}
-            className="group flex w-full items-center justify-between rounded-2xl border border-border bg-[var(--gradient-card)] p-4 text-left shadow-lg transition hover:border-[color:var(--neon-pink)]/60"
-          >
-            <div className="flex items-center gap-3">
-              <div
-                className="flex h-11 w-11 items-center justify-center rounded-xl"
-                style={{ background: `color-mix(in oklab, ${l.accent} 18%, transparent)` }}
-              >
-                <Sparkles className="h-5 w-5" style={{ color: l.accent }} />
-              </div>
-              <div>
-                <p className="text-base font-bold">{l.label}</p>
-                <p className="text-xs text-muted-foreground">{l.desc}</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-1 text-sm font-bold" style={{ color: l.accent }}>
-              {l.cost === 0 ? (
-                <span>Free</span>
-              ) : (
-                <>
-                  <Coins className="h-4 w-4" />
-                  <span className="tabular-nums">{l.cost}</span>
-                </>
-              )}
-            </div>
-          </button>
-        ))}
-      </div>
-
-      <div className="mt-6 flex items-center justify-between text-xs text-muted-foreground">
-        <span className="flex items-center gap-1.5">
-          Balance:
-          <Coins className="h-3.5 w-3.5 text-[var(--neon-cyan)]" />
-          <span className="font-bold text-[var(--neon-cyan)] tabular-nums">{balance}</span>
-          <span>coins</span>
-        </span>
-        <Link to="/shop" className="font-bold text-[var(--neon-cyan)] hover:underline">
-          Get more →
-        </Link>
-      </div>
-
-      <div className="mt-4 flex justify-center">
-        <Button variant="ghost" size="sm" onClick={onCancel} className="text-muted-foreground">
-          Back
-        </Button>
-      </div>
-
     </div>
   );
 }
