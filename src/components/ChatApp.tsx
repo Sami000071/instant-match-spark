@@ -176,8 +176,8 @@ export default function ChatApp() {
     try {
       const { balance: b } = await getBalance({});
       setBalance(b);
-    } catch {
-      setBalance(50);
+    } catch (e) {
+      console.error("refreshBalance failed", e);
     }
   }
 
