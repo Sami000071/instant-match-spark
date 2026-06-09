@@ -51,7 +51,7 @@ function ShopPage() {
       if (data.session?.user) {
         setAuthed(true);
         const token = data.session.access_token;
-        const headers = token ? { Authorization: `Bearer ${token}` } : {};
+        const headers: HeadersInit = token ? { Authorization: `Bearer ${token}` } : {};
         getBal({ data: undefined as never, headers })
           .then(({ balance }) => setBalance(balance))
           .catch(() => {});
