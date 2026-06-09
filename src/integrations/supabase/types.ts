@@ -14,6 +14,24 @@ export type Database = {
   }
   public: {
     Tables: {
+      ad_rewards: {
+        Row: {
+          created_at: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       blocks: {
         Row: {
           blocked_client_id: string
@@ -32,6 +50,33 @@ export type Database = {
           blocker_client_id?: string
           created_at?: string
           id?: string
+        }
+        Relationships: []
+      }
+      coin_transactions: {
+        Row: {
+          created_at: string
+          delta: number
+          id: string
+          metadata: Json
+          reason: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          delta: number
+          id?: string
+          metadata?: Json
+          reason: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          delta?: number
+          id?: string
+          metadata?: Json
+          reason?: string
+          user_id?: string
         }
         Relationships: []
       }
@@ -141,6 +186,7 @@ export type Database = {
           ended_reason: string | null
           id: string
           left_by: string | null
+          lobby: string
           status: Database["public"]["Enums"]["session_status"]
           user_a_avatar_url: string
           user_a_client_id: string
@@ -161,6 +207,7 @@ export type Database = {
           ended_reason?: string | null
           id?: string
           left_by?: string | null
+          lobby?: string
           status?: Database["public"]["Enums"]["session_status"]
           user_a_avatar_url?: string
           user_a_client_id: string
@@ -181,6 +228,7 @@ export type Database = {
           ended_reason?: string | null
           id?: string
           left_by?: string | null
+          lobby?: string
           status?: Database["public"]["Enums"]["session_status"]
           user_a_avatar_url?: string
           user_a_client_id?: string
@@ -273,6 +321,7 @@ export type Database = {
           created_at: string
           gender: string
           id: string
+          lobby: string
           nickname: string
         }
         Insert: {
@@ -282,6 +331,7 @@ export type Database = {
           created_at?: string
           gender?: string
           id?: string
+          lobby?: string
           nickname: string
         }
         Update: {
@@ -291,6 +341,7 @@ export type Database = {
           created_at?: string
           gender?: string
           id?: string
+          lobby?: string
           nickname?: string
         }
         Relationships: []
@@ -325,12 +376,50 @@ export type Database = {
         }
         Relationships: []
       }
+      wallets: {
+        Row: {
+          balance: number
+          created_at: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          balance?: number
+          created_at?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          balance?: number
+          created_at?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      credit_coins: {
+        Args: {
+          _amount: number
+          _meta?: Json
+          _reason: string
+          _user_id: string
+        }
+        Returns: number
+      }
+      spend_coins: {
+        Args: {
+          _amount: number
+          _meta?: Json
+          _reason: string
+          _user_id: string
+        }
+        Returns: number
+      }
     }
     Enums: {
       decision: "pending" | "accept" | "skip"
