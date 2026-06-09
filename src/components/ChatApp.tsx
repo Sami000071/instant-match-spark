@@ -605,8 +605,9 @@ export default function ChatApp() {
     setPartnerTyping(false);
     setStage("matching");
     const previousBalance = balance;
-    if (lobby !== "any" && typeof previousBalance === "number") {
-      setBalance(Math.max(0, previousBalance - 24));
+    if (lobby !== "any") {
+      const visibleBalance = typeof previousBalance === "number" ? previousBalance : 50;
+      setBalance(Math.max(0, visibleBalance - 24));
     }
     try {
       const headers = await getAuthHeaders();
