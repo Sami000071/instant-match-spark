@@ -591,6 +591,7 @@ export default function ChatApp() {
       }
       if (lobby !== "any") {
         toast.success(`Joined ${lobby === "girls" ? "Girls" : "Boys"} lobby · -24 coins`);
+        setBalance((b) => (typeof b === "number" ? Math.max(0, b - 24) : b));
         refreshBalance();
       }
     } catch (e) {
