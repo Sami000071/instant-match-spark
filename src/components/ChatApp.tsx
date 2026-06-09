@@ -180,6 +180,17 @@ export default function ChatApp() {
 
   async function refreshBalance() {
     try {
+      if (authUserId) {
+        const { data } = await supabase
+          .from("wallets")
+          .select("balance")
+          .eq("user_id", authUserId)
+          .maybeSingle();
+        if (typeof data?.balance === "number") {
+          setBalance(data.balance);
+          return;
+        }
+      }
       const headers = await getAuthHeaders();
       const { balance: b } = await getBalance({ headers });
       setBalance(b);
