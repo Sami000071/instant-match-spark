@@ -390,7 +390,9 @@ export default function ChatApp() {
   }
 
   async function onReturnHomeFromMatching() {
-    await leaveQ({ data: { clientId: clientIdRef.current } }).catch(() => {});
+    const headers = await getAuthHeaders();
+    await leaveQ({ data: { clientId: clientIdRef.current }, headers }).catch(() => {});
+    await refreshBalance();
     goHome();
   }
 
@@ -568,7 +570,11 @@ export default function ChatApp() {
   useEffect(() => {
     const handler = () => {
       const cid = clientIdRef.current;
-      if (stage === "matching") leaveQ({ data: { clientId: cid } }).catch(() => {});
+      if (stage === "matching") {
+        getAuthHeaders()
+          .then((headers) => leaveQ({ data: { clientId: cid }, headers }))
+          .catch(() => {});
+      }
     };
     window.addEventListener("beforeunload", handler);
     return () => window.removeEventListener("beforeunload", handler);
@@ -653,7 +659,8 @@ export default function ChatApp() {
   }
 
   async function onCancelMatching() {
-    await leaveQ({ data: { clientId: clientIdRef.current } });
+    const headers = await getAuthHeaders();
+    await leaveQ({ data: { clientId: clientIdRef.current }, headers });
     setStage("home");
     refreshBalance();
   }
