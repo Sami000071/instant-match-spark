@@ -617,6 +617,7 @@ export default function ChatApp() {
       setEndedReason(reasonText(updated as SessionRow, clientIdRef.current));
       setStage("ended");
     }
+    refreshBalance();
   }
 
   async function onLeaveChat() {
