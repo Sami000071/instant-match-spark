@@ -677,7 +677,7 @@ export default function ChatApp() {
   async function onCancelMatching() {
     const headers = await getAuthHeaders();
     await leaveQ({ data: { clientId: clientIdRef.current }, headers });
-    setStage("home");
+    setStage("lobby");
     refreshBalance();
   }
 
