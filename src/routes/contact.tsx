@@ -25,11 +25,11 @@ function ContactPage() {
         couple of business days.
       </p>
       <a
-        href="mailto:support@blink.app"
+        href="mailto:supportblinkapp@gmail.com"
         className="inline-flex items-center gap-3 rounded-xl border border-[var(--neon-pink)]/40 bg-[var(--neon-pink)]/10 px-5 py-4 text-base font-bold text-[var(--neon-pink)] transition-colors hover:bg-[var(--neon-pink)]/20"
       >
         <Mail className="h-5 w-5" />
-        support@blink.app
+        supportblinkapp@gmail.com
       </a>
       <p className="text-xs text-muted-foreground">
         For urgent safety issues, please also use the in-app Report button so we
