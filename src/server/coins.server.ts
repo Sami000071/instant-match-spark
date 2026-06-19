@@ -7,10 +7,10 @@ export const AD_COOLDOWN_SECONDS = 30;
 export const AD_DAILY_CAP = 20;
 
 export const COIN_PACKAGES: Record<string, { coins: number; priceUsd: number; label: string }> = {
-  starter: { coins: 100, priceUsd: 0.99, label: "Starter" },
-  popular: { coins: 250, priceUsd: 1.99, label: "Popular" },
-  value: { coins: 500, priceUsd: 3.49, label: "Value" },
-  pro: { coins: 1000, priceUsd: 5.99, label: "Pro" },
+  starter: { coins: 30, priceUsd: 3.96, label: "Starter" },
+  popular: { coins: 75, priceUsd: 7.96, label: "Popular" },
+  value: { coins: 150, priceUsd: 13.96, label: "Value" },
+  pro: { coins: 300, priceUsd: 23.96, label: "Pro" },
 };
 
 export const SIGNUP_BONUS = 50;
