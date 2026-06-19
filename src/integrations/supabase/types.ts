@@ -411,6 +411,11 @@ export type Database = {
         }
         Returns: number
       }
+      current_client_id: { Args: never; Returns: string }
+      is_session_participant: {
+        Args: { _session_id: string }
+        Returns: boolean
+      }
       spend_coins: {
         Args: {
           _amount: number
