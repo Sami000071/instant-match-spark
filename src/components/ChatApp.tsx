@@ -219,6 +219,12 @@ export default function ChatApp() {
       };
       setProfile(p);
       saveProfile(p);
+      // If the profile is already set up, skip the setup screen on login
+      // and take returning users straight to lobby selection.
+      const complete = !!(p.nickname && p.age && p.country);
+      if (complete) {
+        setStage((s) => (s === "intro" || s === "login" || s === "home" ? "lobby" : s));
+      }
     }
   }
 
