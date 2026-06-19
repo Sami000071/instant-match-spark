@@ -25,10 +25,10 @@ export const Route = createFileRoute("/shop")({
 });
 
 const PACKAGES: { id: "starter" | "popular" | "value" | "pro"; coins: number; price: string; tag?: string; gradient: string }[] = [
-  { id: "starter", coins: 30, price: "$3.96", gradient: "from-pink-500/30 to-pink-700/10" },
-  { id: "popular", coins: 75, price: "$7.96", tag: "Popular", gradient: "from-cyan-400/30 to-cyan-700/10" },
-  { id: "value", coins: 150, price: "$13.96", tag: "Best value", gradient: "from-purple-500/30 to-purple-700/10" },
-  { id: "pro", coins: 300, price: "$23.96", tag: "Pro", gradient: "from-amber-400/30 to-amber-700/10" },
+  { id: "starter", coins: 15, price: "$3.96", gradient: "from-pink-500/30 to-pink-700/10" },
+  { id: "popular", coins: 35, price: "$7.96", tag: "Popular", gradient: "from-cyan-400/30 to-cyan-700/10" },
+  { id: "value", coins: 75, price: "$13.96", tag: "Best value", gradient: "from-purple-500/30 to-purple-700/10" },
+  { id: "pro", coins: 150, price: "$23.96", tag: "Pro", gradient: "from-amber-400/30 to-amber-700/10" },
 ];
 
 function ShopPage() {
