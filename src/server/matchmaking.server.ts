@@ -121,22 +121,25 @@ export async function joinQueueAndTryMatch(
 
   const blocked = await getBlockedSet(clientId);
 
-  // Find another waiter in the same lobby (oldest first), filtering blocked pairs.
+  // Find another waiter, filtering blocked pairs.
+  // Lobby acts as a TARGET-gender filter (not a bucket): a user who picks
+  // "boys" wants male partners; a user who picks "girls" wants female partners.
+  // Mutual match requires both sides' lobby filters to be satisfied.
   const { data: waiters } = await supabaseAdmin
     .from("queue")
     .select("*")
     .neq("client_id", clientId)
-    .eq("lobby", lobby)
     .order("created_at", { ascending: true })
-    .limit(20);
+    .limit(50);
 
-  // In gendered lobbies, only match with partners whose gender matches the lobby.
-  const requiredGender = lobbyRequiresGender(lobby);
-  const partner = waiters?.find(
-    (w) =>
-      !blocked.has(w.client_id) &&
-      (requiredGender ? w.gender === requiredGender : true),
-  );
+  const myRequiredPartnerGender = lobbyRequiresGender(lobby);
+  const partner = waiters?.find((w) => {
+    if (blocked.has(w.client_id)) return false;
+    if (myRequiredPartnerGender && w.gender !== myRequiredPartnerGender) return false;
+    const theirRequired = lobbyRequiresGender((w.lobby ?? "any") as Lobby);
+    if (theirRequired && profile.gender !== theirRequired) return false;
+    return true;
+  });
 
   if (partner) {
     // Atomically remove the partner from queue (only succeeds if still there)
