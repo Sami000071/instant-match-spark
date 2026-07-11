@@ -2225,6 +2225,8 @@ function LoginScreen({
   const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [otp, setOtp] = useState("");
+  const [awaitingOtp, setAwaitingOtp] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
@@ -2246,10 +2248,8 @@ function LoginScreen({
           options: { emailRedirectTo: window.location.origin },
         });
         if (error) throw error;
-        // auto-confirm is on, so a session should exist
-        const { data } = await supabase.auth.getSession();
-        if (data.session) onSuccess();
-        else setInfo("Account created. Please sign in.");
+        setAwaitingOtp(true);
+        setInfo("We sent a 6-digit code to your email. Enter it below to finish.");
       } else {
         const { error } = await supabase.auth.signInWithPassword({
           email: email.trim(),
@@ -2264,6 +2264,50 @@ function LoginScreen({
       setLoading(false);
     }
   }
+
+  async function handleVerifyOtp(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    setInfo(null);
+    const code = otp.trim();
+    if (code.length < 6) {
+      setError("Enter the 6-digit code from your email.");
+      return;
+    }
+    setLoading(true);
+    try {
+      const { error } = await supabase.auth.verifyOtp({
+        email: email.trim(),
+        token: code,
+        type: "signup",
+      });
+      if (error) throw error;
+      onSuccess();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Invalid or expired code.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleResendOtp() {
+    setError(null);
+    setInfo(null);
+    setLoading(true);
+    try {
+      const { error } = await supabase.auth.resend({
+        type: "signup",
+        email: email.trim(),
+      });
+      if (error) throw error;
+      setInfo("New code sent. Check your inbox.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not resend code.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
 
   async function handleGoogle() {
     setError(null);
