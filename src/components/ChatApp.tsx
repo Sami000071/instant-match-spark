@@ -2225,6 +2225,8 @@ function LoginScreen({
   const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [otp, setOtp] = useState("");
+  const [awaitingOtp, setAwaitingOtp] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
@@ -2246,10 +2248,8 @@ function LoginScreen({
           options: { emailRedirectTo: window.location.origin },
         });
         if (error) throw error;
-        // auto-confirm is on, so a session should exist
-        const { data } = await supabase.auth.getSession();
-        if (data.session) onSuccess();
-        else setInfo("Account created. Please sign in.");
+        setAwaitingOtp(true);
+        setInfo("We sent a 6-digit code to your email. Enter it below to finish.");
       } else {
         const { error } = await supabase.auth.signInWithPassword({
           email: email.trim(),
@@ -2264,6 +2264,50 @@ function LoginScreen({
       setLoading(false);
     }
   }
+
+  async function handleVerifyOtp(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    setInfo(null);
+    const code = otp.trim();
+    if (code.length < 6) {
+      setError("Enter the 6-digit code from your email.");
+      return;
+    }
+    setLoading(true);
+    try {
+      const { error } = await supabase.auth.verifyOtp({
+        email: email.trim(),
+        token: code,
+        type: "signup",
+      });
+      if (error) throw error;
+      onSuccess();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Invalid or expired code.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleResendOtp() {
+    setError(null);
+    setInfo(null);
+    setLoading(true);
+    try {
+      const { error } = await supabase.auth.resend({
+        type: "signup",
+        email: email.trim(),
+      });
+      if (error) throw error;
+      setInfo("New code sent. Check your inbox.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not resend code.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
 
   async function handleGoogle() {
     setError(null);
@@ -2328,48 +2372,101 @@ function LoginScreen({
           <div className="h-px flex-1 bg-border" />
         </div>
 
-        <form onSubmit={handleEmail} className="space-y-3">
-          <Input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="you@example.com"
-            className="h-12 bg-input/60"
-            autoComplete="email"
-          />
-          <Input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder="Password (6+ chars)"
-            className="h-12 bg-input/60"
-            autoComplete={mode === "signin" ? "current-password" : "new-password"}
-          />
-          {error && <p className="text-xs text-destructive">{error}</p>}
-          {info && <p className="text-xs text-[var(--neon-cyan)]">{info}</p>}
-          <Button
-            type="submit"
-            disabled={loading}
-            className="h-12 w-full gap-2 bg-[var(--gradient-accent)] text-base font-bold text-background hover:opacity-90"
-          >
-            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-            {mode === "signin" ? "Sign in" : "Create account"}
-          </Button>
-        </form>
+        {awaitingOtp ? (
+          <form onSubmit={handleVerifyOtp} className="space-y-3">
+            <p className="text-xs text-muted-foreground">
+              Enter the 6-digit code we sent to <span className="text-foreground">{email}</span>.
+            </p>
+            <Input
+              type="text"
+              inputMode="numeric"
+              value={otp}
+              onChange={(e) => setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))}
+              placeholder="123456"
+              className="h-12 bg-input/60 text-center text-lg tracking-[0.5em]"
+              autoComplete="one-time-code"
+              maxLength={6}
+            />
+            {error && <p className="text-xs text-destructive">{error}</p>}
+            {info && <p className="text-xs text-[var(--neon-cyan)]">{info}</p>}
+            <Button
+              type="submit"
+              disabled={loading}
+              className="h-12 w-full gap-2 bg-[var(--gradient-accent)] text-base font-bold text-background hover:opacity-90"
+            >
+              {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+              Verify & create account
+            </Button>
+            <div className="flex items-center justify-between text-xs text-muted-foreground">
+              <button
+                type="button"
+                onClick={() => {
+                  setAwaitingOtp(false);
+                  setOtp("");
+                  setError(null);
+                  setInfo(null);
+                }}
+                className="hover:text-foreground"
+              >
+                ← Change email
+              </button>
+              <button
+                type="button"
+                onClick={handleResendOtp}
+                disabled={loading}
+                className="hover:text-foreground"
+              >
+                Resend code
+              </button>
+            </div>
+          </form>
+        ) : (
+          <>
+            <form onSubmit={handleEmail} className="space-y-3">
+              <Input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="you@example.com"
+                className="h-12 bg-input/60"
+                autoComplete="email"
+              />
+              <Input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Password (6+ chars)"
+                className="h-12 bg-input/60"
+                autoComplete={mode === "signin" ? "current-password" : "new-password"}
+              />
+              {error && <p className="text-xs text-destructive">{error}</p>}
+              {info && <p className="text-xs text-[var(--neon-cyan)]">{info}</p>}
+              <Button
+                type="submit"
+                disabled={loading}
+                className="h-12 w-full gap-2 bg-[var(--gradient-accent)] text-base font-bold text-background hover:opacity-90"
+              >
+                {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+                {mode === "signin" ? "Sign in" : "Create account"}
+              </Button>
+            </form>
 
-        <button
-          type="button"
-          onClick={() => {
-            setMode(mode === "signin" ? "signup" : "signin");
-            setError(null);
-            setInfo(null);
-          }}
-          className="block w-full text-center text-xs text-muted-foreground hover:text-foreground"
-        >
-          {mode === "signin"
-            ? "No account? Create one"
-            : "Already have an account? Sign in"}
-        </button>
+            <button
+              type="button"
+              onClick={() => {
+                setMode(mode === "signin" ? "signup" : "signin");
+                setError(null);
+                setInfo(null);
+              }}
+              className="block w-full text-center text-xs text-muted-foreground hover:text-foreground"
+            >
+              {mode === "signin"
+                ? "No account? Create one"
+                : "Already have an account? Sign in"}
+            </button>
+          </>
+        )}
+
       </div>
     </div>
   );
