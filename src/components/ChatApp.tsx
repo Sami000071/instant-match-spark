@@ -2372,48 +2372,101 @@ function LoginScreen({
           <div className="h-px flex-1 bg-border" />
         </div>
 
-        <form onSubmit={handleEmail} className="space-y-3">
-          <Input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="you@example.com"
-            className="h-12 bg-input/60"
-            autoComplete="email"
-          />
-          <Input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder="Password (6+ chars)"
-            className="h-12 bg-input/60"
-            autoComplete={mode === "signin" ? "current-password" : "new-password"}
-          />
-          {error && <p className="text-xs text-destructive">{error}</p>}
-          {info && <p className="text-xs text-[var(--neon-cyan)]">{info}</p>}
-          <Button
-            type="submit"
-            disabled={loading}
-            className="h-12 w-full gap-2 bg-[var(--gradient-accent)] text-base font-bold text-background hover:opacity-90"
-          >
-            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-            {mode === "signin" ? "Sign in" : "Create account"}
-          </Button>
-        </form>
+        {awaitingOtp ? (
+          <form onSubmit={handleVerifyOtp} className="space-y-3">
+            <p className="text-xs text-muted-foreground">
+              Enter the 6-digit code we sent to <span className="text-foreground">{email}</span>.
+            </p>
+            <Input
+              type="text"
+              inputMode="numeric"
+              value={otp}
+              onChange={(e) => setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))}
+              placeholder="123456"
+              className="h-12 bg-input/60 text-center text-lg tracking-[0.5em]"
+              autoComplete="one-time-code"
+              maxLength={6}
+            />
+            {error && <p className="text-xs text-destructive">{error}</p>}
+            {info && <p className="text-xs text-[var(--neon-cyan)]">{info}</p>}
+            <Button
+              type="submit"
+              disabled={loading}
+              className="h-12 w-full gap-2 bg-[var(--gradient-accent)] text-base font-bold text-background hover:opacity-90"
+            >
+              {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+              Verify & create account
+            </Button>
+            <div className="flex items-center justify-between text-xs text-muted-foreground">
+              <button
+                type="button"
+                onClick={() => {
+                  setAwaitingOtp(false);
+                  setOtp("");
+                  setError(null);
+                  setInfo(null);
+                }}
+                className="hover:text-foreground"
+              >
+                ← Change email
+              </button>
+              <button
+                type="button"
+                onClick={handleResendOtp}
+                disabled={loading}
+                className="hover:text-foreground"
+              >
+                Resend code
+              </button>
+            </div>
+          </form>
+        ) : (
+          <>
+            <form onSubmit={handleEmail} className="space-y-3">
+              <Input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="you@example.com"
+                className="h-12 bg-input/60"
+                autoComplete="email"
+              />
+              <Input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Password (6+ chars)"
+                className="h-12 bg-input/60"
+                autoComplete={mode === "signin" ? "current-password" : "new-password"}
+              />
+              {error && <p className="text-xs text-destructive">{error}</p>}
+              {info && <p className="text-xs text-[var(--neon-cyan)]">{info}</p>}
+              <Button
+                type="submit"
+                disabled={loading}
+                className="h-12 w-full gap-2 bg-[var(--gradient-accent)] text-base font-bold text-background hover:opacity-90"
+              >
+                {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+                {mode === "signin" ? "Sign in" : "Create account"}
+              </Button>
+            </form>
 
-        <button
-          type="button"
-          onClick={() => {
-            setMode(mode === "signin" ? "signup" : "signin");
-            setError(null);
-            setInfo(null);
-          }}
-          className="block w-full text-center text-xs text-muted-foreground hover:text-foreground"
-        >
-          {mode === "signin"
-            ? "No account? Create one"
-            : "Already have an account? Sign in"}
-        </button>
+            <button
+              type="button"
+              onClick={() => {
+                setMode(mode === "signin" ? "signup" : "signin");
+                setError(null);
+                setInfo(null);
+              }}
+              className="block w-full text-center text-xs text-muted-foreground hover:text-foreground"
+            >
+              {mode === "signin"
+                ? "No account? Create one"
+                : "Already have an account? Sign in"}
+            </button>
+          </>
+        )}
+
       </div>
     </div>
   );
