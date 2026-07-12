@@ -2222,110 +2222,26 @@ function LoginScreen({
   onSuccess: () => void;
   onBack: () => void;
 }) {
-  const [mode, setMode] = useState<"signin" | "signup">("signin");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [otp, setOtp] = useState("");
-  const [awaitingOtp, setAwaitingOtp] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState<null | "google" | "apple">(null);
   const [error, setError] = useState<string | null>(null);
-  const [info, setInfo] = useState<string | null>(null);
 
-  async function handleEmail(e: React.FormEvent) {
-    e.preventDefault();
+  async function handleOAuth(provider: "google" | "apple") {
     setError(null);
-    setInfo(null);
-    if (!email.trim() || password.length < 6) {
-      setError("Enter a valid email and a password (6+ chars).");
-      return;
-    }
-    setLoading(true);
+    setLoading(provider);
     try {
-      if (mode === "signup") {
-        const { error } = await supabase.auth.signUp({
-          email: email.trim(),
-          password,
-          options: { emailRedirectTo: window.location.origin },
-        });
-        if (error) throw error;
-        setAwaitingOtp(true);
-        setInfo("We sent a 6-digit code to your email. Enter it below to finish.");
-      } else {
-        const { error } = await supabase.auth.signInWithPassword({
-          email: email.trim(),
-          password,
-        });
-        if (error) throw error;
-        onSuccess();
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Something went wrong.");
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  async function handleVerifyOtp(e: React.FormEvent) {
-    e.preventDefault();
-    setError(null);
-    setInfo(null);
-    const code = otp.trim();
-    if (code.length < 6) {
-      setError("Enter the 6-digit code from your email.");
-      return;
-    }
-    setLoading(true);
-    try {
-      const { error } = await supabase.auth.verifyOtp({
-        email: email.trim(),
-        token: code,
-        type: "signup",
-      });
-      if (error) throw error;
-      onSuccess();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Invalid or expired code.");
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  async function handleResendOtp() {
-    setError(null);
-    setInfo(null);
-    setLoading(true);
-    try {
-      const { error } = await supabase.auth.resend({
-        type: "signup",
-        email: email.trim(),
-      });
-      if (error) throw error;
-      setInfo("New code sent. Check your inbox.");
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not resend code.");
-    } finally {
-      setLoading(false);
-    }
-  }
-
-
-  async function handleGoogle() {
-    setError(null);
-    setLoading(true);
-    try {
-      const result = await lovable.auth.signInWithOAuth("google", {
+      const result = await lovable.auth.signInWithOAuth(provider, {
         redirect_uri: window.location.origin,
       });
       if (result.error) {
-        setError(result.error.message ?? "Google sign-in failed");
-        setLoading(false);
+        setError(result.error.message ?? `${provider} sign-in failed`);
+        setLoading(null);
         return;
       }
-      if (result.redirected) return; // browser will navigate
+      if (result.redirected) return;
       onSuccess();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Google sign-in failed.");
-      setLoading(false);
+      setError(err instanceof Error ? err.message : `${provider} sign-in failed.`);
+      setLoading(null);
     }
   }
 
@@ -2340,133 +2256,51 @@ function LoginScreen({
       </button>
       <div className="mb-6 text-center">
         <h2 className="mb-2 text-4xl font-black leading-none tracking-tight md:text-5xl">
-          {mode === "signin" ? (
-            <>Welcome <span className="text-gradient">back</span>.</>
-          ) : (
-            <>Join <span className="text-gradient">blink</span>.</>
-          )}
+          Welcome to <span className="text-gradient">blink</span>.
         </h2>
         <p className="text-sm text-muted-foreground">
-          {mode === "signin"
-            ? "Sign in to start matching."
-            : "Create an account to start matching. 18+ only."}
+          Continue with one tap. 18+ only.
         </p>
       </div>
 
-      <div className="space-y-4 rounded-2xl border border-border bg-[var(--gradient-card)] p-6 shadow-2xl">
+      <div className="space-y-3 rounded-2xl border border-border bg-[var(--gradient-card)] p-6 shadow-2xl">
         <Button
-          onClick={handleGoogle}
-          disabled={loading}
+          onClick={() => handleOAuth("google")}
+          disabled={loading !== null}
           variant="outline"
           className="h-12 w-full gap-2 border-[var(--neon-pink)]/40 bg-transparent text-sm font-bold hover:bg-[var(--neon-pink)]/10"
         >
-          <svg className="h-4 w-4" viewBox="0 0 24 24" aria-hidden>
-            <path fill="#EA4335" d="M12 10.2v3.9h5.5c-.24 1.5-1.7 4.4-5.5 4.4-3.3 0-6-2.7-6-6.1s2.7-6.1 6-6.1c1.9 0 3.1.8 3.8 1.5l2.6-2.5C16.8 3.7 14.6 2.7 12 2.7 6.9 2.7 2.8 6.8 2.8 12s4.1 9.3 9.2 9.3c5.3 0 8.8-3.7 8.8-8.9 0-.6-.06-1-.14-1.5H12z"/>
-          </svg>
+          {loading === "google" ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <svg className="h-4 w-4" viewBox="0 0 24 24" aria-hidden>
+              <path fill="#EA4335" d="M12 10.2v3.9h5.5c-.24 1.5-1.7 4.4-5.5 4.4-3.3 0-6-2.7-6-6.1s2.7-6.1 6-6.1c1.9 0 3.1.8 3.8 1.5l2.6-2.5C16.8 3.7 14.6 2.7 12 2.7 6.9 2.7 2.8 6.8 2.8 12s4.1 9.3 9.2 9.3c5.3 0 8.8-3.7 8.8-8.9 0-.6-.06-1-.14-1.5H12z"/>
+            </svg>
+          )}
           Continue with Google
         </Button>
 
-        <div className="flex items-center gap-3">
-          <div className="h-px flex-1 bg-border" />
-          <span className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">or</span>
-          <div className="h-px flex-1 bg-border" />
-        </div>
+        <Button
+          onClick={() => handleOAuth("apple")}
+          disabled={loading !== null}
+          variant="outline"
+          className="h-12 w-full gap-2 border-[var(--neon-cyan)]/40 bg-transparent text-sm font-bold hover:bg-[var(--neon-cyan)]/10"
+        >
+          {loading === "apple" ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+              <path d="M16.365 1.43c0 1.14-.42 2.22-1.14 3.03-.78.87-2.04 1.54-3.15 1.44-.14-1.11.42-2.28 1.11-3.03.78-.87 2.13-1.54 3.18-1.44zM20.5 17.26c-.55 1.26-.81 1.82-1.52 2.94-1 1.55-2.4 3.48-4.13 3.5-1.55.01-1.95-1-4.05-.99-2.1.01-2.54 1.01-4.09.99-1.73-.02-3.06-1.77-4.05-3.31C.06 15.9-.19 10.85 1.5 8.06c1.2-1.98 3.09-3.14 4.87-3.14 1.81 0 2.95 1 4.45 1 1.45 0 2.34-1 4.44-1 1.59 0 3.27.87 4.47 2.37-3.93 2.15-3.29 7.79.77 9.97z"/>
+            </svg>
+          )}
+          Continue with Apple
+        </Button>
 
-        {awaitingOtp ? (
-          <form onSubmit={handleVerifyOtp} className="space-y-3">
-            <p className="text-xs text-muted-foreground">
-              Enter the 6-digit code we sent to <span className="text-foreground">{email}</span>.
-            </p>
-            <Input
-              type="text"
-              inputMode="numeric"
-              value={otp}
-              onChange={(e) => setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))}
-              placeholder="123456"
-              className="h-12 bg-input/60 text-center text-lg tracking-[0.5em]"
-              autoComplete="one-time-code"
-              maxLength={6}
-            />
-            {error && <p className="text-xs text-destructive">{error}</p>}
-            {info && <p className="text-xs text-[var(--neon-cyan)]">{info}</p>}
-            <Button
-              type="submit"
-              disabled={loading}
-              className="h-12 w-full gap-2 bg-[var(--gradient-accent)] text-base font-bold text-background hover:opacity-90"
-            >
-              {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-              Verify & create account
-            </Button>
-            <div className="flex items-center justify-between text-xs text-muted-foreground">
-              <button
-                type="button"
-                onClick={() => {
-                  setAwaitingOtp(false);
-                  setOtp("");
-                  setError(null);
-                  setInfo(null);
-                }}
-                className="hover:text-foreground"
-              >
-                ← Change email
-              </button>
-              <button
-                type="button"
-                onClick={handleResendOtp}
-                disabled={loading}
-                className="hover:text-foreground"
-              >
-                Resend code
-              </button>
-            </div>
-          </form>
-        ) : (
-          <>
-            <form onSubmit={handleEmail} className="space-y-3">
-              <Input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="you@example.com"
-                className="h-12 bg-input/60"
-                autoComplete="email"
-              />
-              <Input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="Password (6+ chars)"
-                className="h-12 bg-input/60"
-                autoComplete={mode === "signin" ? "current-password" : "new-password"}
-              />
-              {error && <p className="text-xs text-destructive">{error}</p>}
-              {info && <p className="text-xs text-[var(--neon-cyan)]">{info}</p>}
-              <Button
-                type="submit"
-                disabled={loading}
-                className="h-12 w-full gap-2 bg-[var(--gradient-accent)] text-base font-bold text-background hover:opacity-90"
-              >
-                {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-                {mode === "signin" ? "Sign in" : "Create account"}
-              </Button>
-            </form>
+        {error && <p className="text-center text-xs text-destructive">{error}</p>}
 
-            <button
-              type="button"
-              onClick={() => {
-                setMode(mode === "signin" ? "signup" : "signin");
-                setError(null);
-                setInfo(null);
-              }}
-              className="block w-full text-center text-xs text-muted-foreground hover:text-foreground"
-            >
-              {mode === "signin"
-                ? "No account? Create one"
-                : "Already have an account? Sign in"}
-            </button>
-          </>
-        )}
-
+        <p className="pt-2 text-center text-[10px] leading-relaxed text-muted-foreground">
+          By continuing you agree to our Terms and Privacy Policy.
+        </p>
       </div>
     </div>
   );
