@@ -1,7 +1,7 @@
 // Server-only helpers for matchmaking. Never imported from client code.
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import type { Database } from "@/integrations/supabase/types";
-import { LOBBY_COST, creditCoins, spendCoins } from "./coins.server";
+import { LOBBY_COST, spendCoins } from "./coins.server";
 
 type SessionUpdate = Database["public"]["Tables"]["match_sessions"]["Update"];
 
@@ -98,23 +98,10 @@ export async function joinQueueAndTryMatch(
   const existing = await findActiveSession(clientId);
   if (existing) return { session: existing };
 
-  const { data: queued } = await supabaseAdmin
-    .from("queue")
-    .select("lobby")
-    .eq("client_id", clientId)
-    .maybeSingle();
-  const alreadyQueuedInLobby = queued?.lobby === lobby;
-
-  // Premium lobbies require auth and a coin payment once per queue entry.
-  // Anyone can enter — the matching step filters partners by the lobby's gender below.
+  // Premium lobbies require auth but coins are only charged upon an actual match.
   let charged = 0;
   let balance: number | undefined;
-  if (lobby !== "any" && !alreadyQueuedInLobby) {
-    if (!authUserId) throw new Error("AUTH_REQUIRED");
-    // Atomic spend — throws INSUFFICIENT_FUNDS if balance too low.
-    balance = await spendCoins(authUserId, LOBBY_COST, "spend_lobby", { lobby });
-    charged = LOBBY_COST;
-  }
+  if (lobby !== "any" && !authUserId) throw new Error("AUTH_REQUIRED");
 
   // Clean up any prior queue entries first
   await supabaseAdmin.from("queue").delete().eq("client_id", clientId);
@@ -170,6 +157,36 @@ export async function joinQueueAndTryMatch(
         .select()
         .single();
       if (error) throw error;
+
+      // Charge each participant whose chosen lobby was premium — only now that a match happened.
+      const partnerLobby = (partner.lobby ?? "any") as Lobby;
+      const chargeTargets: Array<{ clientId: string; lobby: Lobby }> = [];
+      if (lobby !== "any") chargeTargets.push({ clientId, lobby });
+      if (partnerLobby !== "any")
+        chargeTargets.push({ clientId: partner.client_id, lobby: partnerLobby });
+
+      for (const t of chargeTargets) {
+        const { data: prof } = await supabaseAdmin
+          .from("profiles")
+          .select("user_id")
+          .eq("client_id", t.clientId)
+          .maybeSingle();
+        const uid = prof?.user_id as string | undefined;
+        if (!uid) continue;
+        try {
+          const nb = await spendCoins(uid, LOBBY_COST, "spend_lobby", {
+            lobby: t.lobby,
+            sessionId: (session as MatchSession).id,
+          });
+          if (t.clientId === clientId) {
+            charged = LOBBY_COST;
+            balance = nb;
+          }
+        } catch {
+          // If a partner somehow lacks funds at match time, don't block the match.
+        }
+      }
+
       return { session: session as MatchSession, charged, balance };
     }
   }
@@ -293,19 +310,8 @@ export async function sendMessage(sessionId: string, clientId: string, content: 
   if (error) throw error;
 }
 
-export async function leaveQueue(clientId: string, authUserId: string | null = null) {
-  // If the user was queued in a premium lobby, refund the coin cost.
-  const { data: rows } = await supabaseAdmin
-    .from("queue")
-    .delete()
-    .eq("client_id", clientId)
-    .select("lobby");
-  if (authUserId && rows && rows.length > 0) {
-    const lobby = rows[0].lobby as string;
-    if (lobby && lobby !== "any") {
-      await creditCoins(authUserId, LOBBY_COST, "refund_lobby", { lobby }).catch(() => {});
-    }
-  }
+export async function leaveQueue(clientId: string, _authUserId: string | null = null) {
+  await supabaseAdmin.from("queue").delete().eq("client_id", clientId);
 }
 
 export async function reportPartner(args: {

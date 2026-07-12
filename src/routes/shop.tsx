@@ -1,16 +1,13 @@
 import { useEffect, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { ArrowLeft, Coins, Loader2, Sparkles } from "lucide-react";
+import { ArrowLeft, Coins, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
-import {
-  getBalanceFn,
-  purchaseCoinsFn,
-  claimAdRewardFn,
-} from "@/lib/coins.functions";
-import WatchAdDialog from "@/components/WatchAdDialog";
+import { getBalanceFn, purchaseCoinsFn } from "@/lib/coins.functions";
+
+
 
 export const Route = createFileRoute("/shop")({
   head: () => ({
@@ -35,10 +32,8 @@ function ShopPage() {
   const [balance, setBalance] = useState<number | null>(null);
   const [authed, setAuthed] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
-  const [adOpen, setAdOpen] = useState(false);
   const getBal = useServerFn(getBalanceFn);
   const buy = useServerFn(purchaseCoinsFn);
-  const claim = useServerFn(claimAdRewardFn);
 
   async function getAuthHeaders(): Promise<HeadersInit> {
     const { data } = await supabase.auth.getSession();
@@ -77,21 +72,6 @@ function ShopPage() {
     }
   }
 
-  async function handleAdComplete() {
-    try {
-      const headers = await getAuthHeaders();
-      const { balance, reward } = await claim({ data: undefined as never, headers });
-      setBalance(balance);
-      toast.success(`You earned ${reward} coins`);
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : "Try again later";
-      if (msg.includes("COOLDOWN")) toast.error("Slow down — try again in a moment");
-      else if (msg.includes("DAILY_CAP")) toast.error("Daily ad limit reached. Come back tomorrow!");
-      else toast.error(msg);
-    } finally {
-      setAdOpen(false);
-    }
-  }
 
   return (
     <div className="relative min-h-screen overflow-hidden">
@@ -156,37 +136,10 @@ function ShopPage() {
           ))}
         </div>
 
-        <div className="mt-10 rounded-2xl border border-border bg-[var(--gradient-card)] p-6 shadow-xl">
-          <div className="flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-center">
-            <div>
-              <h2 className="flex items-center gap-2 text-xl font-bold">
-                <Sparkles className="h-5 w-5 text-[var(--neon-lime)]" />
-                Earn free coins
-              </h2>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Watch a short ad to get +5 coins. Limit 20/day.
-              </p>
-            </div>
-            <Button
-              onClick={() => setAdOpen(true)}
-              variant="outline"
-              className="h-11 border-[var(--neon-lime)]/40 bg-transparent font-bold hover:bg-[var(--neon-lime)]/10"
-            >
-              Watch ad · +5
-            </Button>
-          </div>
-        </div>
-
         <p className="mt-6 text-center text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
           Demo prices · payments coming soon
         </p>
       </main>
-
-      <WatchAdDialog
-        open={adOpen}
-        onOpenChange={setAdOpen}
-        onComplete={handleAdComplete}
-      />
     </div>
   );
 }
