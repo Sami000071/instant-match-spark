@@ -310,19 +310,8 @@ export async function sendMessage(sessionId: string, clientId: string, content: 
   if (error) throw error;
 }
 
-export async function leaveQueue(clientId: string, authUserId: string | null = null) {
-  // If the user was queued in a premium lobby, refund the coin cost.
-  const { data: rows } = await supabaseAdmin
-    .from("queue")
-    .delete()
-    .eq("client_id", clientId)
-    .select("lobby");
-  if (authUserId && rows && rows.length > 0) {
-    const lobby = rows[0].lobby as string;
-    if (lobby && lobby !== "any") {
-      await creditCoins(authUserId, LOBBY_COST, "refund_lobby", { lobby }).catch(() => {});
-    }
-  }
+export async function leaveQueue(clientId: string, _authUserId: string | null = null) {
+  await supabaseAdmin.from("queue").delete().eq("client_id", clientId);
 }
 
 export async function reportPartner(args: {
