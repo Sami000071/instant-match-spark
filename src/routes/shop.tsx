@@ -136,37 +136,10 @@ function ShopPage() {
           ))}
         </div>
 
-        <div className="mt-10 rounded-2xl border border-border bg-[var(--gradient-card)] p-6 shadow-xl">
-          <div className="flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-center">
-            <div>
-              <h2 className="flex items-center gap-2 text-xl font-bold">
-                <Sparkles className="h-5 w-5 text-[var(--neon-lime)]" />
-                Earn free coins
-              </h2>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Watch a short ad to get +5 coins. Limit 20/day.
-              </p>
-            </div>
-            <Button
-              onClick={() => setAdOpen(true)}
-              variant="outline"
-              className="h-11 border-[var(--neon-lime)]/40 bg-transparent font-bold hover:bg-[var(--neon-lime)]/10"
-            >
-              Watch ad · +5
-            </Button>
-          </div>
-        </div>
-
         <p className="mt-6 text-center text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
           Demo prices · payments coming soon
         </p>
       </main>
-
-      <WatchAdDialog
-        open={adOpen}
-        onOpenChange={setAdOpen}
-        onComplete={handleAdComplete}
-      />
     </div>
   );
 }
