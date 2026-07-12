@@ -1,7 +1,7 @@
 // Server-only helpers for matchmaking. Never imported from client code.
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import type { Database } from "@/integrations/supabase/types";
-import { LOBBY_COST, creditCoins, spendCoins } from "./coins.server";
+import { LOBBY_COST, spendCoins } from "./coins.server";
 
 type SessionUpdate = Database["public"]["Tables"]["match_sessions"]["Update"];
 
