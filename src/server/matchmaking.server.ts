@@ -157,6 +157,36 @@ export async function joinQueueAndTryMatch(
         .select()
         .single();
       if (error) throw error;
+
+      // Charge each participant whose chosen lobby was premium — only now that a match happened.
+      const partnerLobby = (partner.lobby ?? "any") as Lobby;
+      const chargeTargets: Array<{ clientId: string; lobby: Lobby }> = [];
+      if (lobby !== "any") chargeTargets.push({ clientId, lobby });
+      if (partnerLobby !== "any")
+        chargeTargets.push({ clientId: partner.client_id, lobby: partnerLobby });
+
+      for (const t of chargeTargets) {
+        const { data: prof } = await supabaseAdmin
+          .from("profiles")
+          .select("user_id")
+          .eq("client_id", t.clientId)
+          .maybeSingle();
+        const uid = prof?.user_id as string | undefined;
+        if (!uid) continue;
+        try {
+          const nb = await spendCoins(uid, LOBBY_COST, "spend_lobby", {
+            lobby: t.lobby,
+            sessionId: (session as MatchSession).id,
+          });
+          if (t.clientId === clientId) {
+            charged = LOBBY_COST;
+            balance = nb;
+          }
+        } catch {
+          // If a partner somehow lacks funds at match time, don't block the match.
+        }
+      }
+
       return { session: session as MatchSession, charged, balance };
     }
   }
