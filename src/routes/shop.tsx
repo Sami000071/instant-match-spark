@@ -32,10 +32,8 @@ function ShopPage() {
   const [balance, setBalance] = useState<number | null>(null);
   const [authed, setAuthed] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
-  const [adOpen, setAdOpen] = useState(false);
   const getBal = useServerFn(getBalanceFn);
   const buy = useServerFn(purchaseCoinsFn);
-  const claim = useServerFn(claimAdRewardFn);
 
   async function getAuthHeaders(): Promise<HeadersInit> {
     const { data } = await supabase.auth.getSession();
@@ -74,21 +72,6 @@ function ShopPage() {
     }
   }
 
-  async function handleAdComplete() {
-    try {
-      const headers = await getAuthHeaders();
-      const { balance, reward } = await claim({ data: undefined as never, headers });
-      setBalance(balance);
-      toast.success(`You earned ${reward} coins`);
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : "Try again later";
-      if (msg.includes("COOLDOWN")) toast.error("Slow down — try again in a moment");
-      else if (msg.includes("DAILY_CAP")) toast.error("Daily ad limit reached. Come back tomorrow!");
-      else toast.error(msg);
-    } finally {
-      setAdOpen(false);
-    }
-  }
 
   return (
     <div className="relative min-h-screen overflow-hidden">
