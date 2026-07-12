@@ -1,15 +1,12 @@
 import { useEffect, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { ArrowLeft, Coins, Loader2, Sparkles } from "lucide-react";
+import { ArrowLeft, Coins, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
-import {
-  getBalanceFn,
-  purchaseCoinsFn,
-  claimAdRewardFn,
-} from "@/lib/coins.functions";
+import { getBalanceFn, purchaseCoinsFn } from "@/lib/coins.functions";
+
 
 
 export const Route = createFileRoute("/shop")({
