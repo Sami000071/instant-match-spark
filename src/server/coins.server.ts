@@ -13,7 +13,7 @@ export const COIN_PACKAGES: Record<string, { coins: number; priceUsd: number; la
   pro: { coins: 600, priceUsd: 23.96, label: "Pro" },
 };
 
-export const SIGNUP_BONUS = 40;
+export const SIGNUP_BONUS = 0;
 
 export async function getBalance(userId: string): Promise<number> {
   const { data } = await supabaseAdmin
