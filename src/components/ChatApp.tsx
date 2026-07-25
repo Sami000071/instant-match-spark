@@ -756,7 +756,7 @@ export default function ChatApp() {
       <div className="pointer-events-none absolute -top-40 -left-40 h-96 w-96 rounded-full bg-[var(--neon-pink)] opacity-20 blur-3xl animate-blob" />
       <div className="pointer-events-none absolute -bottom-40 -right-40 h-96 w-96 rounded-full bg-[var(--neon-cyan)] opacity-20 blur-3xl animate-blob [animation-delay:-6s]" />
 
-      <main className="relative mx-auto flex min-h-screen max-w-3xl flex-col px-4 py-6">
+      <main className="relative mx-auto flex min-h-screen max-w-3xl flex-col px-4 py-3">
         <Header
           onHome={stage === "home" || stage === "intro" || stage === "login" ? undefined : goHome}
           onFriends={stage === "intro" || stage === "login" || !authUserId ? undefined : openFriends}
