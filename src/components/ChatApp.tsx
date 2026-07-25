@@ -756,7 +756,7 @@ export default function ChatApp() {
       <div className="pointer-events-none absolute -top-40 -left-40 h-96 w-96 rounded-full bg-[var(--neon-pink)] opacity-20 blur-3xl animate-blob" />
       <div className="pointer-events-none absolute -bottom-40 -right-40 h-96 w-96 rounded-full bg-[var(--neon-cyan)] opacity-20 blur-3xl animate-blob [animation-delay:-6s]" />
 
-      <main className="relative mx-auto flex min-h-screen max-w-3xl flex-col px-4 py-6">
+      <main className="relative mx-auto flex min-h-screen max-w-3xl flex-col px-4 py-3">
         <Header
           onHome={stage === "home" || stage === "intro" || stage === "login" ? undefined : goHome}
           onFriends={stage === "intro" || stage === "login" || !authUserId ? undefined : openFriends}
@@ -1020,17 +1020,17 @@ function HomeScreen({
 
   return (
     <div className="w-full max-w-md animate-fade-up">
-      <div className="mb-8 text-center">
-        <h2 className="mb-3 text-5xl font-black leading-none tracking-tight md:text-6xl">
+      <div className="mb-3 text-center">
+        <h2 className="mb-1 text-3xl font-black leading-none tracking-tight sm:text-4xl">
           Set up your <span className="text-gradient">profile</span>.
         </h2>
-        <p className="text-sm text-muted-foreground">
+        <p className="text-xs text-muted-foreground">
           Both of you have 5 seconds to accept. No swiping, no waiting.
         </p>
       </div>
 
-      <div className="space-y-5 rounded-2xl border border-border bg-[var(--gradient-card)] p-6 shadow-2xl">
-        <div className="flex items-center gap-4">
+      <div className="space-y-3 rounded-2xl border border-border bg-[var(--gradient-card)] p-4 shadow-2xl">
+        <div className="flex items-center gap-3">
           <button
             type="button"
             onClick={() => fileRef.current?.click()}
@@ -1038,17 +1038,17 @@ function HomeScreen({
             aria-label="Upload photo"
           >
             <Avatar nickname={nickname || "you"} avatarUrl={avatarUrl} />
-            <span className="absolute -bottom-1 -right-1 flex h-7 w-7 items-center justify-center rounded-full bg-[var(--gradient-accent)] text-background shadow-md ring-2 ring-background">
+            <span className="absolute -bottom-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full bg-[var(--gradient-accent)] text-background shadow-md ring-2 ring-background">
               {uploading ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                <Loader2 className="h-3 w-3 animate-spin" />
               ) : (
-                <Camera className="h-3.5 w-3.5" />
+                <Camera className="h-3 w-3" />
               )}
             </span>
           </button>
           <div className="flex-1">
             <p className="text-sm font-bold">Your photo</p>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-[11px] text-muted-foreground">
               Optional · shown during the 5s decision
             </p>
           </div>
@@ -1065,20 +1065,20 @@ function HomeScreen({
           />
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
-          <div className="space-y-2">
-            <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+        <div className="grid grid-cols-2 gap-2">
+          <div className="space-y-1">
+            <label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
               Nickname
             </label>
             <Input
               value={nickname}
               onChange={(e) => setNickname(e.target.value.slice(0, 24))}
               placeholder="ghost42"
-              className="h-12 bg-input/60 text-base"
+              className="h-10 bg-input/60 text-sm"
             />
           </div>
-          <div className="space-y-2">
-            <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          <div className="space-y-1">
+            <label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
               Age (18+)
             </label>
             <Input
@@ -1089,18 +1089,18 @@ function HomeScreen({
               value={age}
               onChange={(e) => setAge(e.target.value.replace(/\D/g, "").slice(0, 3))}
               placeholder="18"
-              className="h-12 bg-input/60 text-base"
+              className="h-10 bg-input/60 text-sm"
             />
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
-          <div className="space-y-2">
-            <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+        <div className="grid grid-cols-2 gap-2">
+          <div className="space-y-1">
+            <label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
               Country
             </label>
             <Select value={country || "none"} onValueChange={(v) => setCountry(v === "none" ? "" : v)}>
-              <SelectTrigger className="h-12 bg-input/60">
+              <SelectTrigger className="h-10 bg-input/60">
                 <SelectValue placeholder="Select" />
               </SelectTrigger>
               <SelectContent className="max-h-72">
@@ -1114,12 +1114,12 @@ function HomeScreen({
               </SelectContent>
             </Select>
           </div>
-          <div className="space-y-2">
-            <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          <div className="space-y-1">
+            <label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
               Gender
             </label>
             <Select value={gender} onValueChange={(v) => setGender(v as Profile["gender"])}>
-              <SelectTrigger className="h-12 bg-input/60">
+              <SelectTrigger className="h-10 bg-input/60">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -1138,17 +1138,17 @@ function HomeScreen({
           disabled={!valid || uploading || saving}
           onClick={handleStart}
           variant="outline"
-          className="h-14 w-full gap-2 border-[var(--neon-pink)]/40 bg-transparent text-base font-bold hover:bg-[var(--neon-pink)]/10"
+          className="h-12 w-full gap-2 border-[var(--neon-pink)]/40 bg-transparent text-sm font-bold hover:bg-[var(--neon-pink)]/10"
         >
-          {saving ? <Loader2 className="h-5 w-5 animate-spin" /> : <Sparkles className="h-5 w-5 text-[var(--neon-pink)]" />}
+          {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4 text-[var(--neon-pink)]" />}
           Start Chat
         </Button>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 gap-2">
           <Button
             onClick={onFriends}
             variant="outline"
-            className="h-12 gap-2 border-[var(--neon-pink)]/40 bg-transparent text-sm font-bold hover:bg-[var(--neon-pink)]/10"
+            className="h-10 gap-2 border-[var(--neon-pink)]/40 bg-transparent text-xs font-bold hover:bg-[var(--neon-pink)]/10"
           >
             <Users className="h-4 w-4" />
             My friends
@@ -1161,7 +1161,7 @@ function HomeScreen({
           <Button
             onClick={onLogout}
             variant="outline"
-            className="h-12 gap-2 border-border/60 bg-transparent text-sm font-bold text-muted-foreground hover:text-foreground"
+            className="h-10 gap-2 border-border/60 bg-transparent text-xs font-bold text-muted-foreground hover:text-foreground"
           >
             <LogOut className="h-4 w-4" />
             Sign out
@@ -1175,6 +1175,7 @@ function HomeScreen({
     </div>
   );
 }
+
 
 // ─── Lobby Chooser ─────────────────────────────────────────────────────────
 const LOBBY_COST = 24;
@@ -1212,33 +1213,33 @@ function LobbyScreen({
 
   return (
     <div className="w-full max-w-md animate-fade-up">
-      <div className="mb-6 text-center">
-        <h2 className="text-4xl font-black tracking-tight">
+      <div className="mb-3 text-center">
+        <h2 className="text-3xl font-black tracking-tight">
           Pick a <span className="text-gradient">lobby</span>
         </h2>
-        <p className="mt-2 text-sm text-muted-foreground">
+        <p className="mt-1 text-xs text-muted-foreground">
           Filtered lobbies cost coins. Refunded if you leave before matching.
         </p>
       </div>
 
-      <div className="space-y-3">
+      <div className="space-y-2">
         {lobbies.map((l) => (
           <button
             key={l.id}
             type="button"
             onClick={() => tryChoose(l.id)}
-            className="group flex w-full items-center justify-between rounded-2xl border border-border bg-[var(--gradient-card)] p-4 text-left shadow-lg transition hover:border-[color:var(--neon-pink)]/60"
+            className="group flex w-full items-center justify-between rounded-2xl border border-border bg-[var(--gradient-card)] p-3 text-left shadow-lg transition hover:border-[color:var(--neon-pink)]/60"
           >
             <div className="flex items-center gap-3">
               <div
-                className="flex h-11 w-11 items-center justify-center rounded-xl"
+                className="flex h-10 w-10 items-center justify-center rounded-xl"
                 style={{ background: `color-mix(in oklab, ${l.accent} 18%, transparent)` }}
               >
                 <Sparkles className="h-5 w-5" style={{ color: l.accent }} />
               </div>
               <div>
-                <p className="text-base font-bold">{l.label}</p>
-                <p className="text-xs text-muted-foreground">{l.desc}</p>
+                <p className="text-sm font-bold">{l.label}</p>
+                <p className="text-[11px] text-muted-foreground">{l.desc}</p>
               </div>
             </div>
             <div className="flex items-center gap-1 text-sm font-bold" style={{ color: l.accent }}>
@@ -1255,7 +1256,7 @@ function LobbyScreen({
         ))}
       </div>
 
-      <div className="mt-6 flex items-center justify-between text-xs text-muted-foreground">
+      <div className="mt-3 flex items-center justify-between text-xs text-muted-foreground">
         <span className="flex items-center gap-1.5">
           Balance:
           <Coins className="h-3.5 w-3.5 text-[var(--neon-cyan)]" />
@@ -1267,7 +1268,7 @@ function LobbyScreen({
         </Link>
       </div>
 
-      <div className="mt-4 flex justify-center">
+      <div className="mt-2 flex justify-center">
         <Button variant="ghost" size="sm" onClick={onCancel} className="text-muted-foreground">
           Back
         </Button>
@@ -1276,6 +1277,7 @@ function LobbyScreen({
     </div>
   );
 }
+
 
 // ─── Matching ──────────────────────────────────────────────────────────────
 function MatchingScreen({
@@ -1866,56 +1868,57 @@ function IntroScreen({
 
   return (
     <div className="w-full max-w-2xl animate-fade-up">
-      <div className="mb-10 text-center">
+      <div className="mb-4 text-center">
         <Badge
           variant="outline"
-          className="mb-4 border-[var(--neon-cyan)]/40 text-[var(--neon-cyan)]"
+          className="mb-2 border-[var(--neon-cyan)]/40 text-[var(--neon-cyan)]"
         >
           <Sparkles className="mr-1 h-3 w-3" /> anonymous · instant · 1-on-1
         </Badge>
-        <h2 className="mb-4 text-5xl font-black leading-[0.95] tracking-tight md:text-7xl">
+        <h2 className="mb-2 text-3xl font-black leading-[0.95] tracking-tight sm:text-5xl md:text-6xl">
           Talk to a <span className="text-gradient">stranger</span>
           <br />
           in 5 seconds.
         </h2>
-        <p className="mx-auto max-w-md text-base text-muted-foreground">
+        <p className="mx-auto max-w-md text-sm text-muted-foreground">
           Blink pairs you with one random person. You both decide in 5 seconds.
           If you both tap accept, the chat opens.
         </p>
       </div>
 
-      <div className="mb-8 flex justify-center">
+      <div className="mb-4 flex justify-center">
         <Button
           onClick={onStart}
           variant="outline"
-          className="h-14 w-full max-w-xs gap-2 border-[var(--neon-pink)]/40 bg-transparent text-base font-bold hover:bg-[var(--neon-pink)]/10 sm:w-auto sm:px-10"
+          className="h-12 w-full max-w-xs gap-2 border-[var(--neon-pink)]/40 bg-transparent text-base font-bold hover:bg-[var(--neon-pink)]/10 sm:w-auto sm:px-10"
         >
           <Sparkles className="h-5 w-5 text-[var(--neon-pink)]" />
           Get started
         </Button>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-2">
+      <div className="grid grid-cols-2 gap-2 sm:gap-3">
         {features.map((f) => (
           <div
             key={f.title}
-            className="rounded-2xl border border-border bg-[var(--gradient-card)] p-4 shadow-lg"
+            className="rounded-2xl border border-border bg-[var(--gradient-card)] p-3 shadow-lg"
           >
-            <div className="mb-2 flex items-center gap-2">
+            <div className="mb-1 flex items-center gap-2">
               {f.icon}
-              <p className="text-sm font-bold">{f.title}</p>
+              <p className="text-xs font-bold sm:text-sm">{f.title}</p>
             </div>
-            <p className="text-xs leading-relaxed text-muted-foreground">{f.body}</p>
+            <p className="text-[11px] leading-snug text-muted-foreground sm:text-xs">{f.body}</p>
           </div>
         ))}
       </div>
 
-      <p className="mt-6 text-center text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+      <p className="mt-3 text-center text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
         be kind · 18+ · anonymous
       </p>
     </div>
   );
 }
+
 
 // ─── Friends ───────────────────────────────────────────────────────────────
 function FriendsScreen({
