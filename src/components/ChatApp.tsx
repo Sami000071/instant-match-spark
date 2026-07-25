@@ -1866,56 +1866,57 @@ function IntroScreen({
 
   return (
     <div className="w-full max-w-2xl animate-fade-up">
-      <div className="mb-10 text-center">
+      <div className="mb-4 text-center">
         <Badge
           variant="outline"
-          className="mb-4 border-[var(--neon-cyan)]/40 text-[var(--neon-cyan)]"
+          className="mb-2 border-[var(--neon-cyan)]/40 text-[var(--neon-cyan)]"
         >
           <Sparkles className="mr-1 h-3 w-3" /> anonymous · instant · 1-on-1
         </Badge>
-        <h2 className="mb-4 text-5xl font-black leading-[0.95] tracking-tight md:text-7xl">
+        <h2 className="mb-2 text-3xl font-black leading-[0.95] tracking-tight sm:text-5xl md:text-6xl">
           Talk to a <span className="text-gradient">stranger</span>
           <br />
           in 5 seconds.
         </h2>
-        <p className="mx-auto max-w-md text-base text-muted-foreground">
+        <p className="mx-auto max-w-md text-sm text-muted-foreground">
           Blink pairs you with one random person. You both decide in 5 seconds.
           If you both tap accept, the chat opens.
         </p>
       </div>
 
-      <div className="mb-8 flex justify-center">
+      <div className="mb-4 flex justify-center">
         <Button
           onClick={onStart}
           variant="outline"
-          className="h-14 w-full max-w-xs gap-2 border-[var(--neon-pink)]/40 bg-transparent text-base font-bold hover:bg-[var(--neon-pink)]/10 sm:w-auto sm:px-10"
+          className="h-12 w-full max-w-xs gap-2 border-[var(--neon-pink)]/40 bg-transparent text-base font-bold hover:bg-[var(--neon-pink)]/10 sm:w-auto sm:px-10"
         >
           <Sparkles className="h-5 w-5 text-[var(--neon-pink)]" />
           Get started
         </Button>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-2">
+      <div className="grid grid-cols-2 gap-2 sm:gap-3">
         {features.map((f) => (
           <div
             key={f.title}
-            className="rounded-2xl border border-border bg-[var(--gradient-card)] p-4 shadow-lg"
+            className="rounded-2xl border border-border bg-[var(--gradient-card)] p-3 shadow-lg"
           >
-            <div className="mb-2 flex items-center gap-2">
+            <div className="mb-1 flex items-center gap-2">
               {f.icon}
-              <p className="text-sm font-bold">{f.title}</p>
+              <p className="text-xs font-bold sm:text-sm">{f.title}</p>
             </div>
-            <p className="text-xs leading-relaxed text-muted-foreground">{f.body}</p>
+            <p className="text-[11px] leading-snug text-muted-foreground sm:text-xs">{f.body}</p>
           </div>
         ))}
       </div>
 
-      <p className="mt-6 text-center text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+      <p className="mt-3 text-center text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
         be kind · 18+ · anonymous
       </p>
     </div>
   );
 }
+
 
 // ─── Friends ───────────────────────────────────────────────────────────────
 function FriendsScreen({
