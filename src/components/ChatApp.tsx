@@ -1020,17 +1020,17 @@ function HomeScreen({
 
   return (
     <div className="w-full max-w-md animate-fade-up">
-      <div className="mb-8 text-center">
-        <h2 className="mb-3 text-5xl font-black leading-none tracking-tight md:text-6xl">
+      <div className="mb-3 text-center">
+        <h2 className="mb-1 text-3xl font-black leading-none tracking-tight sm:text-4xl">
           Set up your <span className="text-gradient">profile</span>.
         </h2>
-        <p className="text-sm text-muted-foreground">
+        <p className="text-xs text-muted-foreground">
           Both of you have 5 seconds to accept. No swiping, no waiting.
         </p>
       </div>
 
-      <div className="space-y-5 rounded-2xl border border-border bg-[var(--gradient-card)] p-6 shadow-2xl">
-        <div className="flex items-center gap-4">
+      <div className="space-y-3 rounded-2xl border border-border bg-[var(--gradient-card)] p-4 shadow-2xl">
+        <div className="flex items-center gap-3">
           <button
             type="button"
             onClick={() => fileRef.current?.click()}
@@ -1038,17 +1038,17 @@ function HomeScreen({
             aria-label="Upload photo"
           >
             <Avatar nickname={nickname || "you"} avatarUrl={avatarUrl} />
-            <span className="absolute -bottom-1 -right-1 flex h-7 w-7 items-center justify-center rounded-full bg-[var(--gradient-accent)] text-background shadow-md ring-2 ring-background">
+            <span className="absolute -bottom-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full bg-[var(--gradient-accent)] text-background shadow-md ring-2 ring-background">
               {uploading ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                <Loader2 className="h-3 w-3 animate-spin" />
               ) : (
-                <Camera className="h-3.5 w-3.5" />
+                <Camera className="h-3 w-3" />
               )}
             </span>
           </button>
           <div className="flex-1">
             <p className="text-sm font-bold">Your photo</p>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-[11px] text-muted-foreground">
               Optional · shown during the 5s decision
             </p>
           </div>
@@ -1065,20 +1065,20 @@ function HomeScreen({
           />
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
-          <div className="space-y-2">
-            <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+        <div className="grid grid-cols-2 gap-2">
+          <div className="space-y-1">
+            <label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
               Nickname
             </label>
             <Input
               value={nickname}
               onChange={(e) => setNickname(e.target.value.slice(0, 24))}
               placeholder="ghost42"
-              className="h-12 bg-input/60 text-base"
+              className="h-10 bg-input/60 text-sm"
             />
           </div>
-          <div className="space-y-2">
-            <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          <div className="space-y-1">
+            <label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
               Age (18+)
             </label>
             <Input
@@ -1089,18 +1089,18 @@ function HomeScreen({
               value={age}
               onChange={(e) => setAge(e.target.value.replace(/\D/g, "").slice(0, 3))}
               placeholder="18"
-              className="h-12 bg-input/60 text-base"
+              className="h-10 bg-input/60 text-sm"
             />
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
-          <div className="space-y-2">
-            <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+        <div className="grid grid-cols-2 gap-2">
+          <div className="space-y-1">
+            <label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
               Country
             </label>
             <Select value={country || "none"} onValueChange={(v) => setCountry(v === "none" ? "" : v)}>
-              <SelectTrigger className="h-12 bg-input/60">
+              <SelectTrigger className="h-10 bg-input/60">
                 <SelectValue placeholder="Select" />
               </SelectTrigger>
               <SelectContent className="max-h-72">
@@ -1114,12 +1114,12 @@ function HomeScreen({
               </SelectContent>
             </Select>
           </div>
-          <div className="space-y-2">
-            <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          <div className="space-y-1">
+            <label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
               Gender
             </label>
             <Select value={gender} onValueChange={(v) => setGender(v as Profile["gender"])}>
-              <SelectTrigger className="h-12 bg-input/60">
+              <SelectTrigger className="h-10 bg-input/60">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -1138,17 +1138,17 @@ function HomeScreen({
           disabled={!valid || uploading || saving}
           onClick={handleStart}
           variant="outline"
-          className="h-14 w-full gap-2 border-[var(--neon-pink)]/40 bg-transparent text-base font-bold hover:bg-[var(--neon-pink)]/10"
+          className="h-12 w-full gap-2 border-[var(--neon-pink)]/40 bg-transparent text-sm font-bold hover:bg-[var(--neon-pink)]/10"
         >
-          {saving ? <Loader2 className="h-5 w-5 animate-spin" /> : <Sparkles className="h-5 w-5 text-[var(--neon-pink)]" />}
+          {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4 text-[var(--neon-pink)]" />}
           Start Chat
         </Button>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 gap-2">
           <Button
             onClick={onFriends}
             variant="outline"
-            className="h-12 gap-2 border-[var(--neon-pink)]/40 bg-transparent text-sm font-bold hover:bg-[var(--neon-pink)]/10"
+            className="h-10 gap-2 border-[var(--neon-pink)]/40 bg-transparent text-xs font-bold hover:bg-[var(--neon-pink)]/10"
           >
             <Users className="h-4 w-4" />
             My friends
@@ -1161,7 +1161,7 @@ function HomeScreen({
           <Button
             onClick={onLogout}
             variant="outline"
-            className="h-12 gap-2 border-border/60 bg-transparent text-sm font-bold text-muted-foreground hover:text-foreground"
+            className="h-10 gap-2 border-border/60 bg-transparent text-xs font-bold text-muted-foreground hover:text-foreground"
           >
             <LogOut className="h-4 w-4" />
             Sign out
@@ -1175,6 +1175,7 @@ function HomeScreen({
     </div>
   );
 }
+
 
 // ─── Lobby Chooser ─────────────────────────────────────────────────────────
 const LOBBY_COST = 24;
