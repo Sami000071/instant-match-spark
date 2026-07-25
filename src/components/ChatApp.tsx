@@ -1213,33 +1213,33 @@ function LobbyScreen({
 
   return (
     <div className="w-full max-w-md animate-fade-up">
-      <div className="mb-6 text-center">
-        <h2 className="text-4xl font-black tracking-tight">
+      <div className="mb-3 text-center">
+        <h2 className="text-3xl font-black tracking-tight">
           Pick a <span className="text-gradient">lobby</span>
         </h2>
-        <p className="mt-2 text-sm text-muted-foreground">
+        <p className="mt-1 text-xs text-muted-foreground">
           Filtered lobbies cost coins. Refunded if you leave before matching.
         </p>
       </div>
 
-      <div className="space-y-3">
+      <div className="space-y-2">
         {lobbies.map((l) => (
           <button
             key={l.id}
             type="button"
             onClick={() => tryChoose(l.id)}
-            className="group flex w-full items-center justify-between rounded-2xl border border-border bg-[var(--gradient-card)] p-4 text-left shadow-lg transition hover:border-[color:var(--neon-pink)]/60"
+            className="group flex w-full items-center justify-between rounded-2xl border border-border bg-[var(--gradient-card)] p-3 text-left shadow-lg transition hover:border-[color:var(--neon-pink)]/60"
           >
             <div className="flex items-center gap-3">
               <div
-                className="flex h-11 w-11 items-center justify-center rounded-xl"
+                className="flex h-10 w-10 items-center justify-center rounded-xl"
                 style={{ background: `color-mix(in oklab, ${l.accent} 18%, transparent)` }}
               >
                 <Sparkles className="h-5 w-5" style={{ color: l.accent }} />
               </div>
               <div>
-                <p className="text-base font-bold">{l.label}</p>
-                <p className="text-xs text-muted-foreground">{l.desc}</p>
+                <p className="text-sm font-bold">{l.label}</p>
+                <p className="text-[11px] text-muted-foreground">{l.desc}</p>
               </div>
             </div>
             <div className="flex items-center gap-1 text-sm font-bold" style={{ color: l.accent }}>
@@ -1256,7 +1256,7 @@ function LobbyScreen({
         ))}
       </div>
 
-      <div className="mt-6 flex items-center justify-between text-xs text-muted-foreground">
+      <div className="mt-3 flex items-center justify-between text-xs text-muted-foreground">
         <span className="flex items-center gap-1.5">
           Balance:
           <Coins className="h-3.5 w-3.5 text-[var(--neon-cyan)]" />
@@ -1268,7 +1268,7 @@ function LobbyScreen({
         </Link>
       </div>
 
-      <div className="mt-4 flex justify-center">
+      <div className="mt-2 flex justify-center">
         <Button variant="ghost" size="sm" onClick={onCancel} className="text-muted-foreground">
           Back
         </Button>
@@ -1277,6 +1277,7 @@ function LobbyScreen({
     </div>
   );
 }
+
 
 // ─── Matching ──────────────────────────────────────────────────────────────
 function MatchingScreen({
