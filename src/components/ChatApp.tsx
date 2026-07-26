@@ -1630,6 +1630,7 @@ function ChatScreen({
   draft,
   setDraft,
   onSend,
+  onSendVoice,
   onTyping,
   onLeave,
   onSkipNext,
@@ -1647,6 +1648,7 @@ function ChatScreen({
   draft: string;
   setDraft: (s: string) => void;
   onSend: () => void;
+  onSendVoice: (url: string) => void | Promise<void>;
   onTyping: () => void;
   onLeave: () => void;
   onSkipNext: () => void;
