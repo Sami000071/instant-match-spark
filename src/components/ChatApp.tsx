@@ -2282,6 +2282,16 @@ function FriendChatScreen({
     }
   }
 
+  async function onSendVoice(url: string) {
+    try {
+      await sendFn({
+        data: { clientId, otherId: friend.clientId, content: `voice:${url}` },
+      });
+    } catch {
+      toast.error("Could not send voice note");
+    }
+  }
+
   return (
     <div className="flex h-[80vh] w-full max-w-md animate-fade-up flex-col overflow-hidden rounded-2xl border border-border bg-[var(--gradient-card)] shadow-2xl">
       <div className="flex items-center gap-3 border-b border-border px-3 py-3">
