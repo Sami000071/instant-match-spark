@@ -827,6 +827,7 @@ export default function ChatApp() {
               draft={draft}
               setDraft={setDraft}
               onSend={onSend}
+              onSendVoice={onSendVoice}
               onTyping={onTyping}
               onLeave={onLeaveChat}
               onSkipNext={onSkipNext}
