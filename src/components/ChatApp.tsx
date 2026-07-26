@@ -17,6 +17,7 @@ import {
   addFriendFn,
   blockPartnerFn,
   createAvatarUploadUrlFn,
+  createVoiceUploadUrlFn,
   decideFn,
   enforceTimeoutFn,
   findActiveSessionFn,
@@ -76,6 +77,8 @@ import {
   Clock,
   Coins,
   ShoppingBag,
+  Mic,
+  Square,
 } from "lucide-react";
 
 
@@ -689,6 +692,13 @@ export default function ChatApp() {
     }).catch(() => setDraft(content));
   }
 
+  async function onSendVoice(url: string) {
+    if (!session) return;
+    await sendMsg({
+      data: { sessionId: session.id, clientId: clientIdRef.current, content: `voice:${url}` },
+    }).catch(() => toast.error("Could not send voice note"));
+  }
+
   function onTyping() {
     const ch = typingChannelRef.current;
     if (!ch) return;
@@ -751,19 +761,19 @@ export default function ChatApp() {
   }, [stage]);
 
   return (
-    <div className="relative min-h-screen overflow-hidden">
+    <div className="relative h-[100dvh] overflow-hidden">
       <div className="pointer-events-none absolute inset-0 grid-bg opacity-20" />
       <div className="pointer-events-none absolute -top-40 -left-40 h-96 w-96 rounded-full bg-[var(--neon-pink)] opacity-20 blur-3xl animate-blob" />
       <div className="pointer-events-none absolute -bottom-40 -right-40 h-96 w-96 rounded-full bg-[var(--neon-cyan)] opacity-20 blur-3xl animate-blob [animation-delay:-6s]" />
 
-      <main className="relative mx-auto flex min-h-screen max-w-3xl flex-col px-4 py-3">
+      <main className="relative mx-auto flex h-[100dvh] max-w-3xl flex-col overflow-hidden px-4 py-3">
         <Header
           onHome={stage === "home" || stage === "intro" || stage === "login" ? undefined : goHome}
           onFriends={stage === "intro" || stage === "login" || !authUserId ? undefined : openFriends}
           friendsCount={friends.length}
           balance={authUserId ? balance : null}
         />
-        <div className="flex flex-1 items-center justify-center">
+        <div className="flex min-h-0 flex-1 items-center justify-center overflow-hidden">
           {stage === "intro" && (
             <IntroScreen onStart={handleGetStarted} />
           )}
@@ -817,6 +827,7 @@ export default function ChatApp() {
               draft={draft}
               setDraft={setDraft}
               onSend={onSend}
+              onSendVoice={onSendVoice}
               onTyping={onTyping}
               onLeave={onLeaveChat}
               onSkipNext={onSkipNext}
@@ -1448,6 +1459,169 @@ function DecisionScreen({
   );
 }
 
+// ─── Voice message helpers ────────────────────────────────────────────────
+function MessageBody({ content, mine }: { content: string; mine: boolean }) {
+  if (content.startsWith("voice:")) {
+    const url = content.slice(6);
+    return (
+      <audio
+        src={url}
+        controls
+        preload="metadata"
+        className={"h-9 w-56 max-w-full " + (mine ? "" : "")}
+      />
+    );
+  }
+  return <>{content}</>;
+}
+
+function VoiceRecorderButton({
+  onUploaded,
+}: {
+  onUploaded: (url: string) => void | Promise<void>;
+}) {
+  const createUploadUrl = useServerFn(createVoiceUploadUrlFn);
+  const [recording, setRecording] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [elapsed, setElapsed] = useState(0);
+  const recorderRef = useRef<MediaRecorder | null>(null);
+  const chunksRef = useRef<BlobPart[]>([]);
+  const streamRef = useRef<MediaStream | null>(null);
+  const startRef = useRef<number>(0);
+  const tickRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  function stopTracks() {
+    streamRef.current?.getTracks().forEach((t) => t.stop());
+    streamRef.current = null;
+    if (tickRef.current) {
+      clearInterval(tickRef.current);
+      tickRef.current = null;
+    }
+  }
+
+  async function start() {
+    if (recording || uploading) return;
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      streamRef.current = stream;
+      chunksRef.current = [];
+      const mime = MediaRecorder.isTypeSupported("audio/webm")
+        ? "audio/webm"
+        : MediaRecorder.isTypeSupported("audio/mp4")
+          ? "audio/mp4"
+          : "";
+      const rec = mime ? new MediaRecorder(stream, { mimeType: mime }) : new MediaRecorder(stream);
+      recorderRef.current = rec;
+      rec.ondataavailable = (e) => {
+        if (e.data && e.data.size > 0) chunksRef.current.push(e.data);
+      };
+      rec.onstop = async () => {
+        stopTracks();
+        setRecording(false);
+        const blob = new Blob(chunksRef.current, { type: rec.mimeType || "audio/webm" });
+        if (blob.size < 500) return;
+        setUploading(true);
+        try {
+          const ext = (rec.mimeType || "audio/webm").includes("mp4") ? "mp4" : "webm";
+          const { uploadUrl, publicUrl } = await createUploadUrl({
+            data: { clientId: getClientId(), ext },
+          });
+          const res = await fetch(uploadUrl, {
+            method: "PUT",
+            headers: { "Content-Type": blob.type || "audio/webm" },
+            body: blob,
+          });
+          if (!res.ok) throw new Error("upload failed");
+          await onUploaded(publicUrl);
+        } catch (err) {
+          console.error(err);
+          toast.error("Voice upload failed");
+        } finally {
+          setUploading(false);
+        }
+      };
+      rec.start();
+      startRef.current = Date.now();
+      setElapsed(0);
+      tickRef.current = setInterval(() => {
+        const s = Math.floor((Date.now() - startRef.current) / 1000);
+        setElapsed(s);
+        if (s >= 60) stop();
+      }, 250);
+      setRecording(true);
+    } catch (err) {
+      console.error(err);
+      toast.error("Microphone permission denied");
+      stopTracks();
+    }
+  }
+
+  function stop() {
+    const rec = recorderRef.current;
+    if (rec && rec.state !== "inactive") rec.stop();
+  }
+
+  function cancel() {
+    const rec = recorderRef.current;
+    if (rec && rec.state !== "inactive") {
+      rec.onstop = null as never;
+      rec.stop();
+    }
+    chunksRef.current = [];
+    stopTracks();
+    setRecording(false);
+  }
+
+  useEffect(() => () => {
+    cancel();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  if (recording) {
+    return (
+      <div className="flex items-center gap-1">
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          onClick={cancel}
+          className="h-11 w-11 shrink-0 text-muted-foreground hover:text-destructive"
+          title="Cancel"
+        >
+          <X className="h-5 w-5" />
+        </Button>
+        <span className="tabular-nums text-xs font-bold text-[var(--neon-pink)]">
+          {String(Math.floor(elapsed / 60)).padStart(1, "0")}:
+          {String(elapsed % 60).padStart(2, "0")}
+        </span>
+        <Button
+          type="button"
+          size="icon"
+          onClick={stop}
+          className="h-11 w-11 shrink-0 animate-pulse-glow bg-[var(--neon-pink)] text-background"
+          title="Send voice"
+        >
+          <Square className="h-4 w-4" />
+        </Button>
+      </div>
+    );
+  }
+
+  return (
+    <Button
+      type="button"
+      variant="ghost"
+      size="icon"
+      onClick={start}
+      disabled={uploading}
+      className="h-11 w-11 shrink-0 text-muted-foreground hover:text-[var(--neon-pink)]"
+      title="Record voice"
+    >
+      {uploading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Mic className="h-5 w-5" />}
+    </Button>
+  );
+}
+
 // ─── Chat ──────────────────────────────────────────────────────────────────
 function ChatScreen({
   session,
@@ -1456,6 +1630,7 @@ function ChatScreen({
   draft,
   setDraft,
   onSend,
+  onSendVoice,
   onTyping,
   onLeave,
   onSkipNext,
@@ -1473,6 +1648,7 @@ function ChatScreen({
   draft: string;
   setDraft: (s: string) => void;
   onSend: () => void;
+  onSendVoice: (url: string) => void | Promise<void>;
   onTyping: () => void;
   onLeave: () => void;
   onSkipNext: () => void;
@@ -1500,7 +1676,7 @@ function ChatScreen({
   }, [messages, partnerTyping]);
 
   return (
-    <div className="flex h-[80vh] w-full max-w-md animate-fade-up flex-col overflow-hidden rounded-2xl border border-border bg-[var(--gradient-card)] shadow-2xl">
+    <div className="flex h-full max-h-full w-full max-w-md animate-fade-up flex-col overflow-hidden rounded-2xl border border-border bg-[var(--gradient-card)] shadow-2xl">
       <div className="flex items-center justify-between border-b border-border px-3 py-3">
         <div className="flex items-center gap-3">
           <Avatar nickname={otherNick} avatarUrl={otherAvatar} small />
@@ -1629,7 +1805,7 @@ function ChatScreen({
                     : "mr-auto rounded-bl-sm bg-secondary text-foreground")
                 }
               >
-                {m.content}
+                <MessageBody content={m.content} mine={mine} />
               </div>
             );
           })}
@@ -1673,6 +1849,7 @@ function ChatScreen({
         >
           <Smile className="h-5 w-5" />
         </Button>
+        <VoiceRecorderButton onUploaded={onSendVoice} />
         <Input
           value={draft}
           onChange={(e) => {
@@ -2105,8 +2282,18 @@ function FriendChatScreen({
     }
   }
 
+  async function onSendVoice(url: string) {
+    try {
+      await sendFn({
+        data: { clientId, otherId: friend.clientId, content: `voice:${url}` },
+      });
+    } catch {
+      toast.error("Could not send voice note");
+    }
+  }
+
   return (
-    <div className="flex h-[80vh] w-full max-w-md animate-fade-up flex-col overflow-hidden rounded-2xl border border-border bg-[var(--gradient-card)] shadow-2xl">
+    <div className="flex h-full max-h-full w-full max-w-md animate-fade-up flex-col overflow-hidden rounded-2xl border border-border bg-[var(--gradient-card)] shadow-2xl">
       <div className="flex items-center gap-3 border-b border-border px-3 py-3">
         <Button
           variant="ghost"
@@ -2148,7 +2335,7 @@ function FriendChatScreen({
                     : "mr-auto rounded-bl-sm bg-secondary text-foreground")
                 }
               >
-                {m.content}
+                <MessageBody content={m.content} mine={mine} />
               </div>
             );
           })}
@@ -2184,6 +2371,7 @@ function FriendChatScreen({
         >
           <Smile className="h-5 w-5" />
         </Button>
+        <VoiceRecorderButton onUploaded={onSendVoice} />
         <Input
           value={draft}
           onChange={(e) => setDraft(e.target.value)}

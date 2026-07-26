@@ -536,3 +536,15 @@ export async function createAvatarUploadUrl(clientId: string, ext: string) {
   const { data: pub } = supabaseAdmin.storage.from("avatars").getPublicUrl(path);
   return { uploadUrl: data.signedUrl, token: data.token, path, publicUrl: pub.publicUrl };
 }
+
+// Generate a signed upload URL for a voice note (reuses public avatars bucket under voice/).
+export async function createVoiceUploadUrl(clientId: string, ext: string) {
+  const safeExt = /^(webm|mp4|m4a|ogg|mp3|wav)$/i.test(ext) ? ext.toLowerCase() : "webm";
+  const path = `voice/${clientId}/${Date.now()}.${safeExt}`;
+  const { data, error } = await supabaseAdmin.storage
+    .from("avatars")
+    .createSignedUploadUrl(path);
+  if (error || !data) throw error ?? new Error("Failed to create upload URL");
+  const { data: pub } = supabaseAdmin.storage.from("avatars").getPublicUrl(path);
+  return { uploadUrl: data.signedUrl, token: data.token, path, publicUrl: pub.publicUrl };
+}

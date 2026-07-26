@@ -126,6 +126,18 @@ export const createAvatarUploadUrlFn = createServerFn({ method: "POST" })
     return createAvatarUploadUrl(data.clientId, data.ext);
   });
 
+export const createVoiceUploadUrlFn = createServerFn({ method: "POST" })
+  .inputValidator(
+    z.object({
+      clientId: uuid,
+      ext: z.string().trim().min(1).max(8),
+    }).parse,
+  )
+  .handler(async ({ data }) => {
+    const { createVoiceUploadUrl } = await import("@/server/matchmaking.server");
+    return createVoiceUploadUrl(data.clientId, data.ext);
+  });
+
 export const addFriendFn = createServerFn({ method: "POST" })
   .inputValidator(
     z.object({
