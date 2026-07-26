@@ -692,6 +692,13 @@ export default function ChatApp() {
     }).catch(() => setDraft(content));
   }
 
+  async function onSendVoice(url: string) {
+    if (!session) return;
+    await sendMsg({
+      data: { sessionId: session.id, clientId: clientIdRef.current, content: `voice:${url}` },
+    }).catch(() => toast.error("Could not send voice note"));
+  }
+
   function onTyping() {
     const ch = typingChannelRef.current;
     if (!ch) return;
