@@ -1676,7 +1676,7 @@ function ChatScreen({
   }, [messages, partnerTyping]);
 
   return (
-    <div className="flex h-[80vh] w-full max-w-md animate-fade-up flex-col overflow-hidden rounded-2xl border border-border bg-[var(--gradient-card)] shadow-2xl">
+    <div className="flex h-full max-h-full w-full max-w-md animate-fade-up flex-col overflow-hidden rounded-2xl border border-border bg-[var(--gradient-card)] shadow-2xl">
       <div className="flex items-center justify-between border-b border-border px-3 py-3">
         <div className="flex items-center gap-3">
           <Avatar nickname={otherNick} avatarUrl={otherAvatar} small />
@@ -2293,7 +2293,7 @@ function FriendChatScreen({
   }
 
   return (
-    <div className="flex h-[80vh] w-full max-w-md animate-fade-up flex-col overflow-hidden rounded-2xl border border-border bg-[var(--gradient-card)] shadow-2xl">
+    <div className="flex h-full max-h-full w-full max-w-md animate-fade-up flex-col overflow-hidden rounded-2xl border border-border bg-[var(--gradient-card)] shadow-2xl">
       <div className="flex items-center gap-3 border-b border-border px-3 py-3">
         <Button
           variant="ghost"
