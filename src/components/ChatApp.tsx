@@ -77,6 +77,8 @@ import {
   Clock,
   Coins,
   ShoppingBag,
+  Mic,
+  Square,
 } from "lucide-react";
 
 
