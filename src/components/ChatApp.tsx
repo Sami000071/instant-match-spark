@@ -1805,7 +1805,7 @@ function ChatScreen({
                     : "mr-auto rounded-bl-sm bg-secondary text-foreground")
                 }
               >
-                {m.content}
+                <MessageBody content={m.content} mine={mine} />
               </div>
             );
           })}
