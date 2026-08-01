@@ -79,6 +79,9 @@ import {
   ShoppingBag,
   Mic,
   Square,
+  CheckCheck,
+  AlertTriangle,
+  RotateCw,
 } from "lucide-react";
 
 
@@ -138,6 +141,16 @@ type Stage =
 
 type Lobby = "any" | "girls" | "boys";
 
+type DeliveryStatus = "sending" | "sent" | "delivered" | "failed";
+
+type PendingMessage = {
+  tempId: string;
+  content: string;
+  status: "sending" | "failed";
+};
+
+
+
 export default function ChatApp() {
   const [stage, setStage] = useState<Stage>("intro");
   const [profile, setProfile] = useState<Profile>(EMPTY_PROFILE);
@@ -149,6 +162,10 @@ export default function ChatApp() {
   const [endedReason, setEndedReason] = useState<string | null>(null);
   const [now, setNow] = useState(() => Date.now());
   const [partnerTyping, setPartnerTyping] = useState(false);
+  const [partnerRecording, setPartnerRecording] = useState(false);
+  const [partnerDecided, setPartnerDecided] = useState(false);
+  const [pending, setPending] = useState<PendingMessage[]>([]);
+  const [deliveredIds, setDeliveredIds] = useState<string[]>([]);
   const [incomingFriendRequest, setIncomingFriendRequest] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
   const [friendStatus, setFriendStatus] = useState<"idle" | "pending" | "mutual">("idle");
@@ -334,10 +351,13 @@ export default function ChatApp() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authUserId]);
 
-  // Reset add-friend state whenever the session changes
+  // Reset add-friend / delivery state whenever the session changes
   useEffect(() => {
     setFriendStatus("idle");
     setIncomingFriendRequest(false);
+    setPartnerDecided(false);
+    setPending([]);
+    setDeliveredIds([]);
   }, [session?.id]);
 
   const refreshFriends = async () => {
@@ -517,7 +537,26 @@ export default function ChatApp() {
         "postgres_changes",
         { event: "INSERT", schema: "public", table: "messages", filter: `session_id=eq.${session.id}` },
         (payload) => {
-          setMessages((m) => [...m, payload.new as Message]);
+          const row = payload.new as Message;
+          const mine = row.sender_client_id === clientIdRef.current;
+          setMessages((m) => (m.some((x) => x.id === row.id) ? m : [...m, row]));
+          if (mine) {
+            // reconcile the optimistic bubble with the stored row
+            setPending((p) => {
+              const idx = p.findIndex(
+                (x) => x.content === row.content && x.status === "sending",
+              );
+              if (idx === -1) return p;
+              return p.filter((_, i) => i !== idx);
+            });
+          } else {
+            // acknowledge delivery back to the sender
+            typingChannelRef.current?.send({
+              type: "broadcast",
+              event: "delivered",
+              payload: { from: clientIdRef.current, ids: [row.id] },
+            });
+          }
         },
       )
       .subscribe();
@@ -528,18 +567,42 @@ export default function ChatApp() {
 
   // realtime presence + typing channel (broadcast)
   useEffect(() => {
-    if (stage !== "chatting" || !session) return;
+    if ((stage !== "chatting" && stage !== "deciding") || !session) return;
     const cid = clientIdRef.current;
     const ch = supabase.channel(`typing-${session.id}`, {
       config: { broadcast: { self: false } },
     });
     let typingTimer: ReturnType<typeof setTimeout> | null = null;
+    let recordingTimer: ReturnType<typeof setTimeout> | null = null;
     ch.on("broadcast", { event: "typing" }, (msg) => {
       const from = (msg.payload as { from?: string })?.from;
       if (!from || from === cid) return;
       setPartnerTyping(true);
       if (typingTimer) clearTimeout(typingTimer);
       typingTimer = setTimeout(() => setPartnerTyping(false), 2500);
+    });
+    ch.on("broadcast", { event: "recording" }, (msg) => {
+      const p = msg.payload as { from?: string; active?: boolean };
+      if (!p?.from || p.from === cid) return;
+      if (recordingTimer) clearTimeout(recordingTimer);
+      if (p.active) {
+        setPartnerRecording(true);
+        setPartnerTyping(false);
+        // safety timeout in case the "stopped" event never arrives
+        recordingTimer = setTimeout(() => setPartnerRecording(false), 65000);
+      } else {
+        setPartnerRecording(false);
+      }
+    });
+    ch.on("broadcast", { event: "delivered" }, (msg) => {
+      const p = msg.payload as { from?: string; ids?: string[] };
+      if (!p?.from || p.from === cid || !p.ids?.length) return;
+      setDeliveredIds((prev) => Array.from(new Set([...prev, ...p.ids!])));
+    });
+    ch.on("broadcast", { event: "decided" }, (msg) => {
+      const from = (msg.payload as { from?: string })?.from;
+      if (!from || from === cid) return;
+      setPartnerDecided(true);
     });
     ch.on("broadcast", { event: "friend-request" }, (msg) => {
       const from = (msg.payload as { from?: string })?.from;
@@ -555,11 +618,14 @@ export default function ChatApp() {
     typingChannelRef.current = ch;
     return () => {
       if (typingTimer) clearTimeout(typingTimer);
+      if (recordingTimer) clearTimeout(recordingTimer);
       supabase.removeChannel(ch);
       typingChannelRef.current = null;
       setPartnerTyping(false);
+      setPartnerRecording(false);
     };
   }, [stage, session]);
+
 
   // when entering chatting, fetch any messages we may have missed
   useEffect(() => {
@@ -648,6 +714,11 @@ export default function ChatApp() {
 
   async function onDecide(d: "accept" | "skip") {
     if (!session) return;
+    typingChannelRef.current?.send({
+      type: "broadcast",
+      event: "decided",
+      payload: { from: clientIdRef.current },
+    });
     const updated = await decide({
       data: { sessionId: session.id, clientId: clientIdRef.current, decision: d },
     });
@@ -683,21 +754,49 @@ export default function ChatApp() {
     refreshBalance();
   }
 
+  async function deliver(content: string, tempId?: string) {
+    if (!session) return;
+    const id = tempId ?? `tmp-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    setPending((p) =>
+      tempId
+        ? p.map((x) => (x.tempId === tempId ? { ...x, status: "sending" as const } : x))
+        : [...p, { tempId: id, content, status: "sending" as const }],
+    );
+    try {
+      await sendMsg({
+        data: { sessionId: session.id, clientId: clientIdRef.current, content },
+      });
+    } catch {
+      setPending((p) =>
+        p.map((x) => (x.tempId === id ? { ...x, status: "failed" as const } : x)),
+      );
+    }
+  }
+
   async function onSend() {
     if (!session || !draft.trim()) return;
     const content = draft.trim();
     setDraft("");
-    await sendMsg({
-      data: { sessionId: session.id, clientId: clientIdRef.current, content },
-    }).catch(() => setDraft(content));
+    await deliver(content);
   }
 
   async function onSendVoice(url: string) {
-    if (!session) return;
-    await sendMsg({
-      data: { sessionId: session.id, clientId: clientIdRef.current, content: `voice:${url}` },
-    }).catch(() => toast.error("Could not send voice note"));
+    await deliver(`voice:${url}`);
   }
+
+  function onRetryMessage(tempId: string) {
+    const item = pending.find((x) => x.tempId === tempId);
+    if (item) deliver(item.content, tempId);
+  }
+
+  function onRecordingChange(active: boolean) {
+    typingChannelRef.current?.send({
+      type: "broadcast",
+      event: "recording",
+      payload: { from: clientIdRef.current, active },
+    });
+  }
+
 
   function onTyping() {
     const ch = typingChannelRef.current;
@@ -817,6 +916,7 @@ export default function ChatApp() {
               now={now}
               onDecide={onDecide}
               onReturnHome={onReturnHomeFromDeciding}
+              partnerDecided={partnerDecided}
             />
           )}
           {stage === "chatting" && session && (
@@ -824,11 +924,15 @@ export default function ChatApp() {
               session={session}
               clientId={clientIdRef.current}
               messages={messages}
+              pending={pending}
+              deliveredIds={deliveredIds}
+              onRetryMessage={onRetryMessage}
               draft={draft}
               setDraft={setDraft}
               onSend={onSend}
               onSendVoice={onSendVoice}
               onTyping={onTyping}
+              onRecordingChange={onRecordingChange}
               onLeave={onLeaveChat}
               onSkipNext={onSkipNext}
               onReport={() => setReportOpen(true)}
@@ -838,6 +942,7 @@ export default function ChatApp() {
               incomingFriendRequest={incomingFriendRequest}
               friendStatus={friendStatus}
               partnerTyping={partnerTyping}
+              partnerRecording={partnerRecording}
             />
           )}
           {stage === "ended" && (
@@ -1336,12 +1441,14 @@ function DecisionScreen({
   now,
   onDecide,
   onReturnHome,
+  partnerDecided,
 }: {
   session: SessionRow;
   clientId: string;
   now: number;
   onDecide: (d: "accept" | "skip") => void;
   onReturnHome: () => void;
+  partnerDecided: boolean;
 }) {
   const isA = session.user_a_client_id === clientId;
   const myDecision = isA ? session.user_a_decision : session.user_b_decision;
@@ -1443,6 +1550,15 @@ function DecisionScreen({
             {accepted ? "Accepted" : "Accept"}
           </Button>
         </div>
+        {partnerDecided && (
+          <div className="flex items-center justify-center gap-2 border-t border-border px-6 py-2 text-[11px] uppercase tracking-wider text-[var(--neon-cyan)]">
+            <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-[var(--neon-cyan)]" />
+            {(session.user_a_client_id === clientId
+              ? session.user_b_nickname
+              : session.user_a_nickname) || "partner"}{" "}
+            made their choice
+          </div>
+        )}
       </div>
       <div className="mt-3 flex justify-center">
         <Button
@@ -1475,10 +1591,45 @@ function MessageBody({ content, mine }: { content: string; mine: boolean }) {
   return <>{content}</>;
 }
 
+function MessageStatus({
+  status,
+  onRetry,
+}: {
+  status: DeliveryStatus;
+  onRetry?: () => void;
+}) {
+  if (status === "failed") {
+    return (
+      <button
+        type="button"
+        onClick={onRetry}
+        className="mt-0.5 flex items-center gap-1 text-[10px] font-semibold text-destructive"
+        title="Failed to send — tap to retry"
+      >
+        <AlertTriangle className="h-3 w-3" /> failed
+        <RotateCw className="h-3 w-3" />
+      </button>
+    );
+  }
+  return (
+    <span
+      className="mt-0.5 flex items-center justify-end gap-1 text-[10px] text-white/70"
+      title={status}
+    >
+      {status === "sending" && <Clock className="h-3 w-3" />}
+      {status === "sent" && <Check className="h-3 w-3" />}
+      {status === "delivered" && <CheckCheck className="h-3 w-3" />}
+      {status}
+    </span>
+  );
+}
+
 function VoiceRecorderButton({
   onUploaded,
+  onRecordingChange,
 }: {
   onUploaded: (url: string) => void | Promise<void>;
+  onRecordingChange?: (active: boolean) => void;
 }) {
   const createUploadUrl = useServerFn(createVoiceUploadUrlFn);
   const [recording, setRecording] = useState(false);
@@ -1518,6 +1669,7 @@ function VoiceRecorderButton({
       rec.onstop = async () => {
         stopTracks();
         setRecording(false);
+        onRecordingChange?.(false);
         const blob = new Blob(chunksRef.current, { type: rec.mimeType || "audio/webm" });
         if (blob.size < 500) return;
         setUploading(true);
@@ -1549,6 +1701,7 @@ function VoiceRecorderButton({
         if (s >= 60) stop();
       }, 250);
       setRecording(true);
+      onRecordingChange?.(true);
     } catch (err) {
       console.error(err);
       toast.error("Microphone permission denied");
@@ -1570,6 +1723,7 @@ function VoiceRecorderButton({
     chunksRef.current = [];
     stopTracks();
     setRecording(false);
+    onRecordingChange?.(false);
   }
 
   useEffect(() => () => {
@@ -1627,21 +1781,31 @@ function ChatScreen({
   session,
   clientId,
   messages,
+  pending,
+  deliveredIds,
+  onRetryMessage,
   draft,
   setDraft,
   onSend,
   onSendVoice,
   onTyping,
+  onRecordingChange,
   onLeave,
   onSkipNext,
   onReport,
   onBlock,
   partnerTyping,
+  partnerRecording,
   onAddFriend,
   onDeclineFriend,
   incomingFriendRequest,
   friendStatus,
 }: {
+  pending: PendingMessage[];
+  deliveredIds: string[];
+  onRetryMessage: (tempId: string) => void;
+  onRecordingChange: (active: boolean) => void;
+  partnerRecording: boolean;
   session: SessionRow;
   clientId: string;
   messages: Message[];
@@ -1673,7 +1837,7 @@ function ChatScreen({
       top: scrollRef.current.scrollHeight,
       behavior: "smooth",
     });
-  }, [messages, partnerTyping]);
+  }, [messages, pending, partnerTyping, partnerRecording]);
 
   return (
     <div className="flex h-full max-h-full w-full max-w-md animate-fade-up flex-col overflow-hidden rounded-2xl border border-border bg-[var(--gradient-card)] shadow-2xl">
@@ -1806,9 +1970,29 @@ function ChatScreen({
                 }
               >
                 <MessageBody content={m.content} mine={mine} />
+                {mine && (
+                  <MessageStatus
+                    status={deliveredIds.includes(m.id) ? "delivered" : "sent"}
+                  />
+                )}
               </div>
             );
           })}
+          {pending.map((p) => (
+            <div
+              key={p.tempId}
+              className="ml-auto max-w-[80%] rounded-2xl rounded-br-sm bg-[var(--gradient-accent)] px-3.5 py-2 text-sm font-medium leading-snug text-white opacity-70 drop-shadow-sm"
+            >
+              <MessageBody content={p.content} mine />
+              <MessageStatus status={p.status} onRetry={() => onRetryMessage(p.tempId)} />
+            </div>
+          ))}
+          {partnerRecording && (
+            <div className="mr-auto flex items-center gap-2 rounded-2xl rounded-bl-sm bg-secondary px-3.5 py-2 text-xs text-[var(--neon-cyan)]">
+              <Mic className="h-3.5 w-3.5 animate-pulse" />
+              recording a voice message…
+            </div>
+          )}
           {partnerTyping && (
             <div className="mr-auto flex items-center gap-1.5 rounded-2xl rounded-bl-sm bg-secondary px-3.5 py-2.5">
               <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-[var(--neon-pink)] [animation-delay:-0.3s]" />
@@ -1849,7 +2033,7 @@ function ChatScreen({
         >
           <Smile className="h-5 w-5" />
         </Button>
-        <VoiceRecorderButton onUploaded={onSendVoice} />
+        <VoiceRecorderButton onUploaded={onSendVoice} onRecordingChange={onRecordingChange} />
         <Input
           value={draft}
           onChange={(e) => {
