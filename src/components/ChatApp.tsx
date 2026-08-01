@@ -751,21 +751,49 @@ export default function ChatApp() {
     refreshBalance();
   }
 
+  async function deliver(content: string, tempId?: string) {
+    if (!session) return;
+    const id = tempId ?? `tmp-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    setPending((p) =>
+      tempId
+        ? p.map((x) => (x.tempId === tempId ? { ...x, status: "sending" as const } : x))
+        : [...p, { tempId: id, content, status: "sending" as const }],
+    );
+    try {
+      await sendMsg({
+        data: { sessionId: session.id, clientId: clientIdRef.current, content },
+      });
+    } catch {
+      setPending((p) =>
+        p.map((x) => (x.tempId === id ? { ...x, status: "failed" as const } : x)),
+      );
+    }
+  }
+
   async function onSend() {
     if (!session || !draft.trim()) return;
     const content = draft.trim();
     setDraft("");
-    await sendMsg({
-      data: { sessionId: session.id, clientId: clientIdRef.current, content },
-    }).catch(() => setDraft(content));
+    await deliver(content);
   }
 
   async function onSendVoice(url: string) {
-    if (!session) return;
-    await sendMsg({
-      data: { sessionId: session.id, clientId: clientIdRef.current, content: `voice:${url}` },
-    }).catch(() => toast.error("Could not send voice note"));
+    await deliver(`voice:${url}`);
   }
+
+  function onRetryMessage(tempId: string) {
+    const item = pending.find((x) => x.tempId === tempId);
+    if (item) deliver(item.content, tempId);
+  }
+
+  function onRecordingChange(active: boolean) {
+    typingChannelRef.current?.send({
+      type: "broadcast",
+      event: "recording",
+      payload: { from: clientIdRef.current, active },
+    });
+  }
+
 
   function onTyping() {
     const ch = typingChannelRef.current;
