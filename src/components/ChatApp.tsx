@@ -348,10 +348,13 @@ export default function ChatApp() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authUserId]);
 
-  // Reset add-friend state whenever the session changes
+  // Reset add-friend / delivery state whenever the session changes
   useEffect(() => {
     setFriendStatus("idle");
     setIncomingFriendRequest(false);
+    setPartnerDecided(false);
+    setPending([]);
+    setDeliveredIds([]);
   }, [session?.id]);
 
   const refreshFriends = async () => {
