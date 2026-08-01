@@ -1591,10 +1591,45 @@ function MessageBody({ content, mine }: { content: string; mine: boolean }) {
   return <>{content}</>;
 }
 
+function MessageStatus({
+  status,
+  onRetry,
+}: {
+  status: DeliveryStatus;
+  onRetry?: () => void;
+}) {
+  if (status === "failed") {
+    return (
+      <button
+        type="button"
+        onClick={onRetry}
+        className="mt-0.5 flex items-center gap-1 text-[10px] font-semibold text-destructive"
+        title="Failed to send — tap to retry"
+      >
+        <AlertTriangle className="h-3 w-3" /> failed
+        <RotateCw className="h-3 w-3" />
+      </button>
+    );
+  }
+  return (
+    <span
+      className="mt-0.5 flex items-center justify-end gap-1 text-[10px] text-white/70"
+      title={status}
+    >
+      {status === "sending" && <Clock className="h-3 w-3" />}
+      {status === "sent" && <Check className="h-3 w-3" />}
+      {status === "delivered" && <CheckCheck className="h-3 w-3" />}
+      {status}
+    </span>
+  );
+}
+
 function VoiceRecorderButton({
   onUploaded,
+  onRecordingChange,
 }: {
   onUploaded: (url: string) => void | Promise<void>;
+  onRecordingChange?: (active: boolean) => void;
 }) {
   const createUploadUrl = useServerFn(createVoiceUploadUrlFn);
   const [recording, setRecording] = useState(false);
