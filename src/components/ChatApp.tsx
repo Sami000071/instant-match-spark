@@ -711,6 +711,11 @@ export default function ChatApp() {
 
   async function onDecide(d: "accept" | "skip") {
     if (!session) return;
+    typingChannelRef.current?.send({
+      type: "broadcast",
+      event: "decided",
+      payload: { from: clientIdRef.current },
+    });
     const updated = await decide({
       data: { sessionId: session.id, clientId: clientIdRef.current, decision: d },
     });
