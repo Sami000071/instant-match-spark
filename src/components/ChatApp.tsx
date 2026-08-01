@@ -1837,7 +1837,7 @@ function ChatScreen({
       top: scrollRef.current.scrollHeight,
       behavior: "smooth",
     });
-  }, [messages, partnerTyping]);
+  }, [messages, pending, partnerTyping, partnerRecording]);
 
   return (
     <div className="flex h-full max-h-full w-full max-w-md animate-fade-up flex-col overflow-hidden rounded-2xl border border-border bg-[var(--gradient-card)] shadow-2xl">
