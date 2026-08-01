@@ -531,7 +531,26 @@ export default function ChatApp() {
         "postgres_changes",
         { event: "INSERT", schema: "public", table: "messages", filter: `session_id=eq.${session.id}` },
         (payload) => {
-          setMessages((m) => [...m, payload.new as Message]);
+          const row = payload.new as Message;
+          const mine = row.sender_client_id === clientIdRef.current;
+          setMessages((m) => (m.some((x) => x.id === row.id) ? m : [...m, row]));
+          if (mine) {
+            // reconcile the optimistic bubble with the stored row
+            setPending((p) => {
+              const idx = p.findIndex(
+                (x) => x.content === row.content && x.status === "sending",
+              );
+              if (idx === -1) return p;
+              return p.filter((_, i) => i !== idx);
+            });
+          } else {
+            // acknowledge delivery back to the sender
+            typingChannelRef.current?.send({
+              type: "broadcast",
+              event: "delivered",
+              payload: { from: clientIdRef.current, ids: [row.id] },
+            });
+          }
         },
       )
       .subscribe();
@@ -542,18 +561,42 @@ export default function ChatApp() {
 
   // realtime presence + typing channel (broadcast)
   useEffect(() => {
-    if (stage !== "chatting" || !session) return;
+    if ((stage !== "chatting" && stage !== "deciding") || !session) return;
     const cid = clientIdRef.current;
     const ch = supabase.channel(`typing-${session.id}`, {
       config: { broadcast: { self: false } },
     });
     let typingTimer: ReturnType<typeof setTimeout> | null = null;
+    let recordingTimer: ReturnType<typeof setTimeout> | null = null;
     ch.on("broadcast", { event: "typing" }, (msg) => {
       const from = (msg.payload as { from?: string })?.from;
       if (!from || from === cid) return;
       setPartnerTyping(true);
       if (typingTimer) clearTimeout(typingTimer);
       typingTimer = setTimeout(() => setPartnerTyping(false), 2500);
+    });
+    ch.on("broadcast", { event: "recording" }, (msg) => {
+      const p = msg.payload as { from?: string; active?: boolean };
+      if (!p?.from || p.from === cid) return;
+      if (recordingTimer) clearTimeout(recordingTimer);
+      if (p.active) {
+        setPartnerRecording(true);
+        setPartnerTyping(false);
+        // safety timeout in case the "stopped" event never arrives
+        recordingTimer = setTimeout(() => setPartnerRecording(false), 65000);
+      } else {
+        setPartnerRecording(false);
+      }
+    });
+    ch.on("broadcast", { event: "delivered" }, (msg) => {
+      const p = msg.payload as { from?: string; ids?: string[] };
+      if (!p?.from || p.from === cid || !p.ids?.length) return;
+      setDeliveredIds((prev) => Array.from(new Set([...prev, ...p.ids!])));
+    });
+    ch.on("broadcast", { event: "decided" }, (msg) => {
+      const from = (msg.payload as { from?: string })?.from;
+      if (!from || from === cid) return;
+      setPartnerDecided(true);
     });
     ch.on("broadcast", { event: "friend-request" }, (msg) => {
       const from = (msg.payload as { from?: string })?.from;
@@ -569,11 +612,14 @@ export default function ChatApp() {
     typingChannelRef.current = ch;
     return () => {
       if (typingTimer) clearTimeout(typingTimer);
+      if (recordingTimer) clearTimeout(recordingTimer);
       supabase.removeChannel(ch);
       typingChannelRef.current = null;
       setPartnerTyping(false);
+      setPartnerRecording(false);
     };
   }, [stage, session]);
+
 
   // when entering chatting, fetch any messages we may have missed
   useEffect(() => {
