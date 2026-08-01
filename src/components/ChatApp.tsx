@@ -138,6 +138,16 @@ type Stage =
 
 type Lobby = "any" | "girls" | "boys";
 
+type DeliveryStatus = "sending" | "sent" | "delivered" | "failed";
+
+type PendingMessage = {
+  tempId: string;
+  content: string;
+  status: "sending" | "failed";
+};
+
+
+
 export default function ChatApp() {
   const [stage, setStage] = useState<Stage>("intro");
   const [profile, setProfile] = useState<Profile>(EMPTY_PROFILE);
