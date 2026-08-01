@@ -1781,21 +1781,31 @@ function ChatScreen({
   session,
   clientId,
   messages,
+  pending,
+  deliveredIds,
+  onRetryMessage,
   draft,
   setDraft,
   onSend,
   onSendVoice,
   onTyping,
+  onRecordingChange,
   onLeave,
   onSkipNext,
   onReport,
   onBlock,
   partnerTyping,
+  partnerRecording,
   onAddFriend,
   onDeclineFriend,
   incomingFriendRequest,
   friendStatus,
 }: {
+  pending: PendingMessage[];
+  deliveredIds: string[];
+  onRetryMessage: (tempId: string) => void;
+  onRecordingChange: (active: boolean) => void;
+  partnerRecording: boolean;
   session: SessionRow;
   clientId: string;
   messages: Message[];
