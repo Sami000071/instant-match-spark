@@ -149,6 +149,10 @@ export default function ChatApp() {
   const [endedReason, setEndedReason] = useState<string | null>(null);
   const [now, setNow] = useState(() => Date.now());
   const [partnerTyping, setPartnerTyping] = useState(false);
+  const [partnerRecording, setPartnerRecording] = useState(false);
+  const [partnerDecided, setPartnerDecided] = useState(false);
+  const [pending, setPending] = useState<PendingMessage[]>([]);
+  const [deliveredIds, setDeliveredIds] = useState<string[]>([]);
   const [incomingFriendRequest, setIncomingFriendRequest] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
   const [friendStatus, setFriendStatus] = useState<"idle" | "pending" | "mutual">("idle");
