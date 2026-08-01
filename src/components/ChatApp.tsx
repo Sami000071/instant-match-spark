@@ -79,6 +79,9 @@ import {
   ShoppingBag,
   Mic,
   Square,
+  CheckCheck,
+  AlertTriangle,
+  RotateCw,
 } from "lucide-react";
 
 
