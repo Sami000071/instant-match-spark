@@ -1438,12 +1438,14 @@ function DecisionScreen({
   now,
   onDecide,
   onReturnHome,
+  partnerDecided,
 }: {
   session: SessionRow;
   clientId: string;
   now: number;
   onDecide: (d: "accept" | "skip") => void;
   onReturnHome: () => void;
+  partnerDecided: boolean;
 }) {
   const isA = session.user_a_client_id === clientId;
   const myDecision = isA ? session.user_a_decision : session.user_b_decision;
