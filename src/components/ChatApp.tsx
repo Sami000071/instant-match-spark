@@ -1970,9 +1970,29 @@ function ChatScreen({
                 }
               >
                 <MessageBody content={m.content} mine={mine} />
+                {mine && (
+                  <MessageStatus
+                    status={deliveredIds.includes(m.id) ? "delivered" : "sent"}
+                  />
+                )}
               </div>
             );
           })}
+          {pending.map((p) => (
+            <div
+              key={p.tempId}
+              className="ml-auto max-w-[80%] rounded-2xl rounded-br-sm bg-[var(--gradient-accent)] px-3.5 py-2 text-sm font-medium leading-snug text-white opacity-70 drop-shadow-sm"
+            >
+              <MessageBody content={p.content} mine />
+              <MessageStatus status={p.status} onRetry={() => onRetryMessage(p.tempId)} />
+            </div>
+          ))}
+          {partnerRecording && (
+            <div className="mr-auto flex items-center gap-2 rounded-2xl rounded-bl-sm bg-secondary px-3.5 py-2 text-xs text-[var(--neon-cyan)]">
+              <Mic className="h-3.5 w-3.5 animate-pulse" />
+              recording a voice message…
+            </div>
+          )}
           {partnerTyping && (
             <div className="mr-auto flex items-center gap-1.5 rounded-2xl rounded-bl-sm bg-secondary px-3.5 py-2.5">
               <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-[var(--neon-pink)] [animation-delay:-0.3s]" />
