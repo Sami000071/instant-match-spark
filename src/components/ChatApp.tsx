@@ -1669,6 +1669,7 @@ function VoiceRecorderButton({
       rec.onstop = async () => {
         stopTracks();
         setRecording(false);
+        onRecordingChange?.(false);
         const blob = new Blob(chunksRef.current, { type: rec.mimeType || "audio/webm" });
         if (blob.size < 500) return;
         setUploading(true);
@@ -1700,6 +1701,7 @@ function VoiceRecorderButton({
         if (s >= 60) stop();
       }, 250);
       setRecording(true);
+      onRecordingChange?.(true);
     } catch (err) {
       console.error(err);
       toast.error("Microphone permission denied");
@@ -1721,6 +1723,7 @@ function VoiceRecorderButton({
     chunksRef.current = [];
     stopTracks();
     setRecording(false);
+    onRecordingChange?.(false);
   }
 
   useEffect(() => () => {
