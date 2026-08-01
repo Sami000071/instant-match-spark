@@ -2555,7 +2555,7 @@ function FriendChatScreen({
         >
           <Smile className="h-5 w-5" />
         </Button>
-        <VoiceRecorderButton onUploaded={onSendVoice} onRecordingChange={onRecordingChange} />
+        <VoiceRecorderButton onUploaded={onSendVoice} />
         <Input
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
