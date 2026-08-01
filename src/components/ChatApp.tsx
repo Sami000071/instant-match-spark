@@ -913,6 +913,7 @@ export default function ChatApp() {
               now={now}
               onDecide={onDecide}
               onReturnHome={onReturnHomeFromDeciding}
+              partnerDecided={partnerDecided}
             />
           )}
           {stage === "chatting" && session && (
@@ -920,11 +921,15 @@ export default function ChatApp() {
               session={session}
               clientId={clientIdRef.current}
               messages={messages}
+              pending={pending}
+              deliveredIds={deliveredIds}
+              onRetryMessage={onRetryMessage}
               draft={draft}
               setDraft={setDraft}
               onSend={onSend}
               onSendVoice={onSendVoice}
               onTyping={onTyping}
+              onRecordingChange={onRecordingChange}
               onLeave={onLeaveChat}
               onSkipNext={onSkipNext}
               onReport={() => setReportOpen(true)}
@@ -934,6 +939,7 @@ export default function ChatApp() {
               incomingFriendRequest={incomingFriendRequest}
               friendStatus={friendStatus}
               partnerTyping={partnerTyping}
+              partnerRecording={partnerRecording}
             />
           )}
           {stage === "ended" && (
