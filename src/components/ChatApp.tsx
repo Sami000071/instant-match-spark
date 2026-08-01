@@ -1547,6 +1547,15 @@ function DecisionScreen({
             {accepted ? "Accepted" : "Accept"}
           </Button>
         </div>
+        {partnerDecided && (
+          <div className="flex items-center justify-center gap-2 border-t border-border px-6 py-2 text-[11px] uppercase tracking-wider text-[var(--neon-cyan)]">
+            <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-[var(--neon-cyan)]" />
+            {(session.user_a_client_id === clientId
+              ? session.user_b_nickname
+              : session.user_a_nickname) || "partner"}{" "}
+            made their choice
+          </div>
+        )}
       </div>
       <div className="mt-3 flex justify-center">
         <Button
