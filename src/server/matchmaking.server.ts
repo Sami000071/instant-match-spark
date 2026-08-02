@@ -21,6 +21,8 @@ export type MatchSession = {
   user_a_country: string;
   user_a_gender: string;
   user_a_avatar_url: string;
+  user_a_age: number | null;
+  user_b_age: number | null;
   user_b_client_id: string;
   user_b_nickname: string;
   user_b_country: string;
@@ -40,6 +42,7 @@ export type Profile = {
   country: string;
   gender: string;
   avatarUrl: string;
+  age?: number | null;
 };
 
 // Remove user from queue and end any active session they're in.
@@ -146,11 +149,13 @@ export async function joinQueueAndTryMatch(
           user_a_country: partner.country ?? "",
           user_a_gender: partner.gender ?? "unspecified",
           user_a_avatar_url: partner.avatar_url ?? "",
+          user_a_age: (partner as { age?: number | null }).age ?? null,
           user_b_client_id: clientId,
           user_b_nickname: profile.nickname,
           user_b_country: profile.country,
           user_b_gender: profile.gender,
           user_b_avatar_url: profile.avatarUrl,
+          user_b_age: profile.age ?? null,
           decide_deadline: deadline,
           lobby,
         })
@@ -198,6 +203,7 @@ export async function joinQueueAndTryMatch(
     country: profile.country,
     gender: profile.gender,
     avatar_url: profile.avatarUrl,
+    age: profile.age ?? null,
     lobby,
   });
   return { session: null, charged, balance };

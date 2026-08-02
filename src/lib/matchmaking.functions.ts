@@ -14,6 +14,7 @@ const profileSchema = z.object({
   country,
   gender,
   avatarUrl,
+  age: z.number().int().min(13).max(120).nullable().default(null),
 });
 
 export const joinQueueFn = createServerFn({ method: "POST" })
