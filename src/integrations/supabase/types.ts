@@ -188,12 +188,14 @@ export type Database = {
           left_by: string | null
           lobby: string
           status: Database["public"]["Enums"]["session_status"]
+          user_a_age: number | null
           user_a_avatar_url: string
           user_a_client_id: string
           user_a_country: string
           user_a_decision: Database["public"]["Enums"]["decision"]
           user_a_gender: string
           user_a_nickname: string
+          user_b_age: number | null
           user_b_avatar_url: string
           user_b_client_id: string
           user_b_country: string
@@ -209,12 +211,14 @@ export type Database = {
           left_by?: string | null
           lobby?: string
           status?: Database["public"]["Enums"]["session_status"]
+          user_a_age?: number | null
           user_a_avatar_url?: string
           user_a_client_id: string
           user_a_country?: string
           user_a_decision?: Database["public"]["Enums"]["decision"]
           user_a_gender?: string
           user_a_nickname: string
+          user_b_age?: number | null
           user_b_avatar_url?: string
           user_b_client_id: string
           user_b_country?: string
@@ -230,12 +234,14 @@ export type Database = {
           left_by?: string | null
           lobby?: string
           status?: Database["public"]["Enums"]["session_status"]
+          user_a_age?: number | null
           user_a_avatar_url?: string
           user_a_client_id?: string
           user_a_country?: string
           user_a_decision?: Database["public"]["Enums"]["decision"]
           user_a_gender?: string
           user_a_nickname?: string
+          user_b_age?: number | null
           user_b_avatar_url?: string
           user_b_client_id?: string
           user_b_country?: string
@@ -315,6 +321,7 @@ export type Database = {
       }
       queue: {
         Row: {
+          age: number | null
           avatar_url: string
           client_id: string
           country: string
@@ -325,6 +332,7 @@ export type Database = {
           nickname: string
         }
         Insert: {
+          age?: number | null
           avatar_url?: string
           client_id: string
           country?: string
@@ -335,6 +343,7 @@ export type Database = {
           nickname: string
         }
         Update: {
+          age?: number | null
           avatar_url?: string
           client_id?: string
           country?: string
