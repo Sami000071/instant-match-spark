@@ -864,12 +864,12 @@ export default function ChatApp() {
   }, [stage]);
 
   return (
-    <div className="relative h-[100dvh] overflow-hidden">
+    <div className="relative h-[calc(100dvh-2.5rem)] overflow-hidden">
       <div className="pointer-events-none absolute inset-0 grid-bg opacity-20" />
       <div className="pointer-events-none absolute -top-40 -left-40 h-96 w-96 rounded-full bg-[var(--neon-pink)] opacity-20 blur-3xl animate-blob" />
       <div className="pointer-events-none absolute -bottom-40 -right-40 h-96 w-96 rounded-full bg-[var(--neon-cyan)] opacity-20 blur-3xl animate-blob [animation-delay:-6s]" />
 
-      <main className="relative mx-auto flex h-[100dvh] max-w-3xl flex-col overflow-hidden px-3 py-2 sm:px-4 sm:py-3">
+      <main className="relative mx-auto flex h-full max-w-3xl flex-col overflow-hidden px-3 py-2 sm:px-4 sm:py-3">
         <Header
           onHome={stage === "home" || stage === "intro" || stage === "login" ? undefined : goHome}
           onFriends={stage === "intro" || stage === "login" || !authUserId ? undefined : openFriends}
