@@ -867,14 +867,14 @@ export default function ChatApp() {
       <div className="pointer-events-none absolute -top-40 -left-40 h-96 w-96 rounded-full bg-[var(--neon-pink)] opacity-20 blur-3xl animate-blob" />
       <div className="pointer-events-none absolute -bottom-40 -right-40 h-96 w-96 rounded-full bg-[var(--neon-cyan)] opacity-20 blur-3xl animate-blob [animation-delay:-6s]" />
 
-      <main className="relative mx-auto flex h-[100dvh] max-w-3xl flex-col overflow-hidden px-4 py-3">
+      <main className="relative mx-auto flex h-[100dvh] max-w-3xl flex-col overflow-hidden px-3 py-2 sm:px-4 sm:py-3">
         <Header
           onHome={stage === "home" || stage === "intro" || stage === "login" ? undefined : goHome}
           onFriends={stage === "intro" || stage === "login" || !authUserId ? undefined : openFriends}
           friendsCount={friends.length}
           balance={authUserId ? balance : null}
         />
-        <div className="flex min-h-0 flex-1 items-center justify-center overflow-hidden">
+        <div className="flex min-h-0 flex-1 items-center justify-center overflow-y-auto overflow-x-hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {stage === "intro" && (
             <IntroScreen onStart={handleGetStarted} />
           )}
@@ -1004,7 +1004,7 @@ function Header({
   balance: number | null;
 }) {
   return (
-    <header className="mb-6 flex items-center justify-between">
+    <header className="mb-3 flex items-center justify-between sm:mb-4">
       <button
         type="button"
         onClick={onHome}
@@ -1584,17 +1584,73 @@ function DecisionScreen({
 }
 
 // ─── Voice message helpers ────────────────────────────────────────────────
+function VoiceMessage({ url }: { url: string }) {
+  const audioRef = useRef<HTMLAudioElement>(null);
+  const [playing, setPlaying] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [failed, setFailed] = useState(false);
+
+  async function toggle() {
+    const el = audioRef.current;
+    if (!el) return;
+    if (playing) {
+      el.pause();
+      return;
+    }
+    try {
+      await el.play();
+    } catch {
+      setFailed(true);
+    }
+  }
+
+  return (
+    <div className="flex w-56 max-w-full items-center gap-2">
+      <button
+        type="button"
+        onClick={toggle}
+        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-background/25"
+        aria-label={playing ? "Pause voice message" : "Play voice message"}
+      >
+        {playing ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+      </button>
+      <div className="h-1.5 min-w-0 flex-1 overflow-hidden rounded-full bg-background/25">
+        <div
+          className="h-full rounded-full bg-current transition-[width] duration-150"
+          style={{ width: `${progress * 100}%` }}
+        />
+      </div>
+      {failed && (
+        <a href={url} target="_blank" rel="noreferrer" className="text-[10px] underline">
+          open
+        </a>
+      )}
+      <audio
+        ref={audioRef}
+        src={url}
+        preload="metadata"
+        onPlay={() => setPlaying(true)}
+        onPause={() => setPlaying(false)}
+        onEnded={() => {
+          setPlaying(false);
+          setProgress(0);
+        }}
+        onError={() => setFailed(true)}
+        onTimeUpdate={(e) => {
+          const el = e.currentTarget;
+          const d = Number.isFinite(el.duration) && el.duration > 0 ? el.duration : 0;
+          setProgress(d ? Math.min(1, el.currentTime / d) : 0);
+        }}
+        className="hidden"
+      />
+    </div>
+  );
+}
+
 function MessageBody({ content, mine }: { content: string; mine: boolean }) {
   if (content.startsWith("voice:")) {
-    const url = content.slice(6);
-    return (
-      <audio
-        src={url}
-        controls
-        preload="metadata"
-        className={"h-9 w-56 max-w-full " + (mine ? "" : "")}
-      />
-    );
+    void mine;
+    return <VoiceMessage url={content.slice(6)} />;
   }
   return <>{content}</>;
 }
@@ -1664,11 +1720,15 @@ function VoiceRecorderButton({
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       streamRef.current = stream;
       chunksRef.current = [];
-      const mime = MediaRecorder.isTypeSupported("audio/webm")
-        ? "audio/webm"
-        : MediaRecorder.isTypeSupported("audio/mp4")
-          ? "audio/mp4"
-          : "";
+      // Prefer mp4/aac: it plays everywhere (including iOS Safari, which
+      // cannot decode webm/opus). Fall back to webm on browsers without it.
+      const mime = MediaRecorder.isTypeSupported("audio/mp4")
+        ? "audio/mp4"
+        : MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
+          ? "audio/webm;codecs=opus"
+          : MediaRecorder.isTypeSupported("audio/webm")
+            ? "audio/webm"
+            : "";
       const rec = mime ? new MediaRecorder(stream, { mimeType: mime }) : new MediaRecorder(stream);
       recorderRef.current = rec;
       rec.ondataavailable = (e) => {
@@ -1688,7 +1748,10 @@ function VoiceRecorderButton({
           });
           const res = await fetch(uploadUrl, {
             method: "PUT",
-            headers: { "Content-Type": blob.type || "audio/webm" },
+            headers: {
+              "Content-Type": blob.type || "audio/webm",
+              "x-upsert": "true",
+            },
             body: blob,
           });
           if (!res.ok) throw new Error("upload failed");
@@ -1700,7 +1763,7 @@ function VoiceRecorderButton({
           setUploading(false);
         }
       };
-      rec.start();
+      rec.start(500);
       startRef.current = Date.now();
       setElapsed(0);
       tickRef.current = setInterval(() => {
