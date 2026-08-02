@@ -101,6 +101,8 @@ type SessionRow = {
   user_a_country: string;
   user_a_gender: string;
   user_a_avatar_url: string;
+  user_a_age?: number | null;
+  user_b_age?: number | null;
   user_b_client_id: string;
   user_b_nickname: string;
   user_b_country: string;
