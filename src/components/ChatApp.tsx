@@ -1458,6 +1458,7 @@ function DecisionScreen({
   const otherCountry = isA ? session.user_b_country : session.user_a_country;
   const otherGender = isA ? session.user_b_gender : session.user_a_gender;
   const otherAvatar = isA ? session.user_b_avatar_url : session.user_a_avatar_url;
+  const otherAge = isA ? session.user_b_age : session.user_a_age;
 
   // Anchor countdown to the client's clock the first time we see this session,
   // so server/client clock skew or late realtime delivery can't make it skip
@@ -1514,6 +1515,11 @@ function DecisionScreen({
           </div>
 
           <div className="flex flex-wrap justify-center gap-1.5">
+            {typeof otherAge === "number" && otherAge > 0 && (
+              <span className="rounded-full border border-[var(--neon-lime)]/40 bg-[var(--neon-lime)]/10 px-2.5 py-1 text-xs text-[var(--neon-lime)]">
+                {otherAge} yrs
+              </span>
+            )}
             {country && (
               <span className="rounded-full border border-[var(--neon-cyan)]/40 bg-[var(--neon-cyan)]/10 px-2.5 py-1 text-xs text-[var(--neon-cyan)]">
                 {country.flag} {country.name}
@@ -1830,6 +1836,7 @@ function ChatScreen({
   const otherNick = isA ? session.user_b_nickname : session.user_a_nickname;
   const otherAvatar = isA ? session.user_b_avatar_url : session.user_a_avatar_url;
   const otherCountry = isA ? session.user_b_country : session.user_a_country;
+  const otherAge = isA ? session.user_b_age : session.user_a_age;
   const country = useMemo(() => findCountry(otherCountry), [otherCountry]);
   const [emojiOpen, setEmojiOpen] = useState(false);
 
