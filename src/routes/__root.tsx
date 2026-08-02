@@ -68,10 +68,12 @@ function RootShell({ children }: { children: React.ReactNode }) {
 
 function RootComponent() {
   return (
-    <>
-      <Outlet />
+    <div className="flex h-[100dvh] flex-col overflow-hidden">
+      <div className="min-h-0 flex-1 overflow-y-auto">
+        <Outlet />
+      </div>
       <Footer />
       <Toaster />
-    </>
+    </div>
   );
 }

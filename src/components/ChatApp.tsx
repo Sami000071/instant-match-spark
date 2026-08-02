@@ -864,7 +864,7 @@ export default function ChatApp() {
   }, [stage]);
 
   return (
-    <div className="relative h-[calc(100dvh-2.5625rem)] overflow-hidden">
+    <div className="relative h-full overflow-hidden">
       <div className="pointer-events-none absolute inset-0 grid-bg opacity-20" />
       <div className="pointer-events-none absolute -top-40 -left-40 h-96 w-96 rounded-full bg-[var(--neon-pink)] opacity-20 blur-3xl animate-blob" />
       <div className="pointer-events-none absolute -bottom-40 -right-40 h-96 w-96 rounded-full bg-[var(--neon-cyan)] opacity-20 blur-3xl animate-blob [animation-delay:-6s]" />
