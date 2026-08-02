@@ -1856,6 +1856,9 @@ function ChatScreen({
           <div>
             <p className="flex items-center gap-1.5 text-sm font-bold leading-tight">
               {otherNick}
+              {typeof otherAge === "number" && otherAge > 0 && (
+                <span className="text-[11px] font-semibold text-muted-foreground">{otherAge}</span>
+              )}
               {country && <span title={country.name}>{country.flag}</span>}
             </p>
             <p className="flex items-center gap-1 text-[10px] uppercase tracking-wider text-[var(--neon-lime)]">
