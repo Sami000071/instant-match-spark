@@ -79,6 +79,8 @@ import {
   ShoppingBag,
   Mic,
   Square,
+  Play,
+  Pause,
   CheckCheck,
   AlertTriangle,
   RotateCw,
