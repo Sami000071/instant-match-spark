@@ -77,8 +77,8 @@ function PrivacyPage() {
       <Section title="Contact">
         <p>
           Questions? Reach us at{" "}
-          <a className="text-[var(--neon-pink)] underline" href="mailto:support@blink.app">
-            support@blink.app
+          <a className="text-[var(--neon-pink)] underline" href="mailto:supportblinkapp@gmail.com">
+            supportblinkapp@gmail.com
           </a>
           .
         </p>

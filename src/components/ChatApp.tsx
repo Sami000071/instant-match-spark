@@ -1338,7 +1338,7 @@ function LobbyScreen({
           Pick a <span className="text-gradient">lobby</span>
         </h2>
         <p className="mt-1 text-xs text-muted-foreground">
-          Filtered lobbies cost coins. Refunded if you leave before matching.
+          Filtered lobbies cost coins, charged only when you match with someone.
         </p>
       </div>
 
