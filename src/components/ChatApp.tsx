@@ -697,6 +697,49 @@ export default function ChatApp() {
     };
   }, [stage, session]);
 
+  // keep the session status in sync so "user left"/ended shows up fast
+  // even if the realtime UPDATE event is missed.
+  useEffect(() => {
+    if ((stage !== "chatting" && stage !== "deciding") || !session) return;
+    const sessionId = session.id;
+    let cancelled = false;
+
+    const syncSession = async () => {
+      if (cancelled) return;
+      const { data } = await supabase
+        .from("match_sessions")
+        .select("*")
+        .eq("id", sessionId)
+        .maybeSingle();
+      if (cancelled || !data) return;
+      const s = data as SessionRow;
+      setSession((prev) => (prev && prev.id === s.id ? s : prev));
+      if (s.status === "chatting") setStage("chatting");
+      if (s.status === "ended") {
+        setEndedReason(reasonText(s, clientIdRef.current));
+        setStage("ended");
+      }
+    };
+
+    void syncSession();
+    const interval = setInterval(syncSession, 3000);
+    const onVisible = () => {
+      if (document.visibilityState === "visible") void syncSession();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    window.addEventListener("focus", onVisible);
+    window.addEventListener("online", onVisible);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+      document.removeEventListener("visibilitychange", onVisible);
+      window.removeEventListener("focus", onVisible);
+      window.removeEventListener("online", onVisible);
+    };
+  }, [stage, session]);
+
+
+
 
   // backend timeout enforcement
   useEffect(() => {
