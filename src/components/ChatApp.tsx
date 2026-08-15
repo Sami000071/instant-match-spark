@@ -85,6 +85,7 @@ import {
   CheckCheck,
   AlertTriangle,
   RotateCw,
+  Image as ImageIcon,
 } from "lucide-react";
 
 
