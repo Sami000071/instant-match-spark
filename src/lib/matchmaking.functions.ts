@@ -139,6 +139,20 @@ export const createVoiceUploadUrlFn = createServerFn({ method: "POST" })
     return createVoiceUploadUrl(data.clientId, data.ext);
   });
 
+export const createChatImageUploadUrlFn = createServerFn({ method: "POST" })
+  .inputValidator(
+    z.object({
+      clientId: uuid,
+      ext: z.string().trim().min(1).max(8),
+    }).parse,
+  )
+  .handler(async ({ data }) => {
+    const { createChatImageUploadUrl } = await import("@/server/matchmaking.server");
+    return createChatImageUploadUrl(data.clientId, data.ext);
+  });
+
+
+
 export const addFriendFn = createServerFn({ method: "POST" })
   .inputValidator(
     z.object({

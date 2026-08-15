@@ -554,3 +554,15 @@ export async function createVoiceUploadUrl(clientId: string, ext: string) {
   const { data: pub } = supabaseAdmin.storage.from("avatars").getPublicUrl(path);
   return { uploadUrl: data.signedUrl, token: data.token, path, publicUrl: pub.publicUrl };
 }
+
+// Generate a signed upload URL for a chat photo (reuses public avatars bucket under chat/).
+export async function createChatImageUploadUrl(clientId: string, ext: string) {
+  const safeExt = /^(png|jpe?g|webp|gif|heic|heif)$/i.test(ext) ? ext.toLowerCase() : "jpg";
+  const path = `chat/${clientId}/${Date.now()}.${safeExt}`;
+  const { data, error } = await supabaseAdmin.storage
+    .from("avatars")
+    .createSignedUploadUrl(path);
+  if (error || !data) throw error ?? new Error("Failed to create upload URL");
+  const { data: pub } = supabaseAdmin.storage.from("avatars").getPublicUrl(path);
+  return { uploadUrl: data.signedUrl, token: data.token, path, publicUrl: pub.publicUrl };
+}
