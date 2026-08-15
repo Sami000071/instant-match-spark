@@ -1753,8 +1753,122 @@ function MessageBody({ content, mine }: { content: string; mine: boolean }) {
     void mine;
     return <VoiceMessage url={content.slice(6)} />;
   }
+  if (content.startsWith("image:")) {
+    const url = content.slice(6);
+    return (
+      <a href={url} target="_blank" rel="noreferrer" className="block">
+        <img
+          src={url}
+          alt="Shared photo"
+          loading="lazy"
+          className="max-h-56 w-full max-w-[220px] rounded-lg object-cover"
+        />
+      </a>
+    );
+  }
   return <>{content}</>;
 }
+
+function ImagePickerButton({ onUploaded }: { onUploaded: (url: string) => void | Promise<void> }) {
+  const createUploadUrl = useServerFn(createChatImageUploadUrlFn);
+  const [uploading, setUploading] = useState(false);
+  const [open, setOpen] = useState(false);
+  const galleryRef = useRef<HTMLInputElement>(null);
+  const cameraRef = useRef<HTMLInputElement>(null);
+
+  async function handleFile(file: File | undefined | null) {
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      toast.error("Please pick an image");
+      return;
+    }
+    if (file.size > 8 * 1024 * 1024) {
+      toast.error("Image must be under 8 MB");
+      return;
+    }
+    setUploading(true);
+    try {
+      const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
+      const { uploadUrl, publicUrl } = await createUploadUrl({
+        data: { clientId: getClientId(), ext },
+      });
+      const res = await fetch(uploadUrl, {
+        method: "PUT",
+        headers: { "Content-Type": file.type, "x-upsert": "true" },
+        body: file,
+      });
+      if (!res.ok) throw new Error("upload failed");
+      await onUploaded(publicUrl);
+    } catch (err) {
+      console.error(err);
+      toast.error("Photo upload failed");
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  return (
+    <div className="relative shrink-0">
+      {open && (
+        <div className="absolute bottom-14 left-0 z-20 flex w-36 flex-col overflow-hidden rounded-xl border border-border bg-popover shadow-2xl">
+          <button
+            type="button"
+            className="flex items-center gap-2 px-3 py-2.5 text-left text-xs hover:bg-secondary"
+            onClick={() => {
+              setOpen(false);
+              cameraRef.current?.click();
+            }}
+          >
+            <Camera className="h-4 w-4" /> Camera
+          </button>
+          <button
+            type="button"
+            className="flex items-center gap-2 px-3 py-2.5 text-left text-xs hover:bg-secondary"
+            onClick={() => {
+              setOpen(false);
+              galleryRef.current?.click();
+            }}
+          >
+            <ImageIcon className="h-4 w-4" /> Gallery
+          </button>
+        </div>
+      )}
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon"
+        disabled={uploading}
+        onClick={() => setOpen((o) => !o)}
+        className="h-11 w-11 text-muted-foreground hover:text-[var(--neon-pink)]"
+        title="Send a photo"
+      >
+        {uploading ? <Loader2 className="h-5 w-5 animate-spin" /> : <ImageIcon className="h-5 w-5" />}
+      </Button>
+      <input
+        ref={cameraRef}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        className="hidden"
+        onChange={(e) => {
+          void handleFile(e.target.files?.[0]);
+          e.target.value = "";
+        }}
+      />
+      <input
+        ref={galleryRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={(e) => {
+          void handleFile(e.target.files?.[0]);
+          e.target.value = "";
+        }}
+      />
+    </div>
+  );
+}
+
 
 function MessageStatus({
   status,
