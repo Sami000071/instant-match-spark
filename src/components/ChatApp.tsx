@@ -17,6 +17,7 @@ import {
   addFriendFn,
   blockPartnerFn,
   createAvatarUploadUrlFn,
+  createChatImageUploadUrlFn,
   createVoiceUploadUrlFn,
   decideFn,
   enforceTimeoutFn,
