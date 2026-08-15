@@ -631,18 +631,72 @@ export default function ChatApp() {
   }, [stage, session]);
 
 
-  // when entering chatting, fetch any messages we may have missed
+  // keep the chat in sync: initial fetch + polling + refocus/online resync,
+  // so nothing is missed while the tab is backgrounded or realtime drops.
   useEffect(() => {
     if (stage !== "chatting" || !session) return;
-    supabase
-      .from("messages")
-      .select("*")
-      .eq("session_id", session.id)
-      .order("created_at", { ascending: true })
-      .then(({ data }) => {
-        if (data) setMessages(data as Message[]);
+    const sessionId = session.id;
+    let cancelled = false;
+
+    const sync = async () => {
+      if (cancelled) return;
+      const { data } = await supabase
+        .from("messages")
+        .select("*")
+        .eq("session_id", sessionId)
+        .order("created_at", { ascending: true });
+      if (cancelled || !data) return;
+      const rows = data as Message[];
+      setMessages((prev) => {
+        if (
+          prev.length === rows.length &&
+          prev.every((m, i) => m.id === rows[i]!.id)
+        ) {
+          return prev;
+        }
+        return rows;
       });
+      // clear optimistic bubbles that now exist server-side
+      setPending((p) =>
+        p.filter(
+          (x) =>
+            !rows.some(
+              (r) =>
+                r.sender_client_id === clientIdRef.current &&
+                r.content === x.content,
+            ),
+        ),
+      );
+      // ack anything from the partner we may have missed
+      const theirs = rows
+        .filter((r) => r.sender_client_id !== clientIdRef.current)
+        .map((r) => r.id);
+      if (theirs.length) {
+        typingChannelRef.current?.send({
+          type: "broadcast",
+          event: "delivered",
+          payload: { from: clientIdRef.current, ids: theirs },
+        });
+      }
+    };
+
+    void sync();
+    const interval = setInterval(sync, 4000);
+    const onVisible = () => {
+      if (document.visibilityState === "visible") void sync();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    window.addEventListener("focus", onVisible);
+    window.addEventListener("online", onVisible);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+      document.removeEventListener("visibilitychange", onVisible);
+      window.removeEventListener("focus", onVisible);
+      window.removeEventListener("online", onVisible);
+    };
   }, [stage, session]);
+
 
   // backend timeout enforcement
   useEffect(() => {
