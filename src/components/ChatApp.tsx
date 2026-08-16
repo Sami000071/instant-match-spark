@@ -1039,6 +1039,7 @@ export default function ChatApp() {
               setDraft={setDraft}
               onSend={onSend}
               onSendVoice={onSendVoice}
+              onSendImage={onSendImage}
               onTyping={onTyping}
               onRecordingChange={onRecordingChange}
               onLeave={onLeaveChat}
@@ -2079,6 +2080,7 @@ function ChatScreen({
   setDraft,
   onSend,
   onSendVoice,
+  onSendImage,
   onTyping,
   onRecordingChange,
   onLeave,
@@ -2104,6 +2106,7 @@ function ChatScreen({
   setDraft: (s: string) => void;
   onSend: () => void;
   onSendVoice: (url: string) => void | Promise<void>;
+  onSendImage: (url: string) => void | Promise<void>;
   onTyping: () => void;
   onLeave: () => void;
   onSkipNext: () => void;
@@ -2328,6 +2331,7 @@ function ChatScreen({
         >
           <Smile className="h-5 w-5" />
         </Button>
+        <ImagePickerButton onUploaded={onSendImage} />
         <VoiceRecorderButton onUploaded={onSendVoice} onRecordingChange={onRecordingChange} />
         <Input
           value={draft}
@@ -2771,6 +2775,16 @@ function FriendChatScreen({
     }
   }
 
+  async function onSendImage(url: string) {
+    try {
+      await sendFn({
+        data: { clientId, otherId: friend.clientId, content: `image:${url}` },
+      });
+    } catch {
+      toast.error("Could not send photo");
+    }
+  }
+
   return (
     <div className="flex h-full max-h-full w-full max-w-md animate-fade-up flex-col overflow-hidden rounded-2xl border border-border bg-[var(--gradient-card)] shadow-2xl">
       <div className="flex items-center gap-3 border-b border-border px-3 py-3">
@@ -2850,6 +2864,7 @@ function FriendChatScreen({
         >
           <Smile className="h-5 w-5" />
         </Button>
+        <ImagePickerButton onUploaded={onSendImage} />
         <VoiceRecorderButton onUploaded={onSendVoice} />
         <Input
           value={draft}
