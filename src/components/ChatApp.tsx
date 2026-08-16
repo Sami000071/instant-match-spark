@@ -887,6 +887,11 @@ export default function ChatApp() {
     await deliver(`voice:${url}`);
   }
 
+  async function onSendImage(url: string) {
+    await deliver(`image:${url}`);
+  }
+
+
   function onRetryMessage(tempId: string) {
     const item = pending.find((x) => x.tempId === tempId);
     if (item) deliver(item.content, tempId);
