@@ -159,7 +159,7 @@ function ShopPage() {
                 <div className="mt-auto pt-2">
                   <Button
                     onClick={() => handleBuy(pkg.priceId)}
-                    className="h-11 w-full bg-[var(--gradient-accent)] font-bold text-background hover:opacity-90"
+                    className="h-11 w-full bg-gradient-to-r from-[var(--neon-pink)] to-[var(--neon-cyan)] font-bold text-background hover:opacity-90"
                   >
                     Buy
                   </Button>
