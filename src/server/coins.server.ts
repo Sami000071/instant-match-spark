@@ -98,13 +98,7 @@ export async function claimAdReward(userId: string): Promise<{ balance: number; 
   return { balance, reward: AD_REWARD };
 }
 
-export async function purchaseCoins(
-  userId: string,
-  packageId: string,
-): Promise<{ balance: number; coins: number }> {
-  const pkg = COIN_PACKAGES[packageId];
-  if (!pkg) throw new Error("Unknown package");
-  // Placeholder: real payment integration will verify a payment receipt before crediting.
-  const balance = await creditCoins(userId, pkg.coins, "purchase", { packageId });
-  return { balance, coins: pkg.coins };
-}
+// Coin purchases are credited only by the verified Stripe webhook
+// (src/routes/api/public/payments/webhook.ts). There is no client-callable
+// path that grants purchased coins.
+

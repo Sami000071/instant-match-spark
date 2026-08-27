@@ -1,85 +1,117 @@
 import { useEffect, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { ArrowLeft, Coins, Loader2 } from "lucide-react";
+import { ArrowLeft, Coins, X } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
-import { getBalanceFn, purchaseCoinsFn } from "@/lib/coins.functions";
-
-
+import { getBalanceFn } from "@/lib/coins.functions";
+import { StripeEmbeddedCheckout } from "@/components/StripeEmbeddedCheckout";
+import { PaymentTestModeBanner } from "@/components/PaymentTestModeBanner";
+import { paymentsConfigured } from "@/lib/stripe";
 
 export const Route = createFileRoute("/shop")({
+  validateSearch: (search: Record<string, unknown>): { checkout?: string; session_id?: string } => ({
+    checkout: typeof search.checkout === "string" ? search.checkout : undefined,
+    session_id: typeof search.session_id === "string" ? search.session_id : undefined,
+  }),
   head: () => ({
     meta: [
       { title: "Shop — blink coins" },
       { name: "description", content: "Top up coins to unlock premium matchmaking lobbies." },
       { property: "og:title", content: "Shop — blink coins" },
       { property: "og:description", content: "Top up coins to unlock premium matchmaking lobbies." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
     ],
   }),
   component: ShopPage,
 });
 
-const PACKAGES: { id: "starter" | "popular" | "value" | "pro"; coins: number; price: string; tag?: string; gradient: string }[] = [
-  { id: "starter", coins: 60, price: "$3.96", gradient: "from-pink-500/30 to-pink-700/10" },
-  { id: "popular", coins: 140, price: "$7.96", tag: "Popular", gradient: "from-cyan-400/30 to-cyan-700/10" },
-  { id: "value", coins: 300, price: "$13.96", tag: "Best value", gradient: "from-purple-500/30 to-purple-700/10" },
-  { id: "pro", coins: 600, price: "$23.96", tag: "Pro", gradient: "from-amber-400/30 to-amber-700/10" },
+const PACKAGES: {
+  id: string;
+  priceId: string;
+  coins: number;
+  price: string;
+  tag?: string;
+  gradient: string;
+}[] = [
+  { id: "starter", priceId: "coins_starter_onetime", coins: 60, price: "$3.96", gradient: "from-pink-500/30 to-pink-700/10" },
+  { id: "popular", priceId: "coins_popular_onetime", coins: 140, price: "$7.96", tag: "Popular", gradient: "from-cyan-400/30 to-cyan-700/10" },
+  { id: "value", priceId: "coins_value_onetime", coins: 300, price: "$13.96", tag: "Best value", gradient: "from-purple-500/30 to-purple-700/10" },
+  { id: "pro", priceId: "coins_pro_onetime", coins: 600, price: "$23.96", tag: "Pro", gradient: "from-amber-400/30 to-amber-700/10" },
 ];
 
 function ShopPage() {
+  const { checkout } = Route.useSearch();
   const [balance, setBalance] = useState<number | null>(null);
   const [authed, setAuthed] = useState(false);
-  const [busy, setBusy] = useState<string | null>(null);
+  const [activePriceId, setActivePriceId] = useState<string | null>(null);
   const getBal = useServerFn(getBalanceFn);
-  const buy = useServerFn(purchaseCoinsFn);
 
-  async function getAuthHeaders(): Promise<HeadersInit> {
+  async function refreshBalance() {
     const { data } = await supabase.auth.getSession();
-    const token = data.session?.access_token;
-    return token ? { Authorization: `Bearer ${token}` } : {};
+    if (!data.session?.user) return;
+    const token = data.session.access_token;
+    const headers: HeadersInit = token ? { Authorization: `Bearer ${token}` } : {};
+    try {
+      const res = await getBal({ data: undefined as never, headers });
+      setBalance(res.balance);
+    } catch {
+      /* ignore */
+    }
   }
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
       if (data.session?.user) {
         setAuthed(true);
-        const token = data.session.access_token;
-        const headers: HeadersInit = token ? { Authorization: `Bearer ${token}` } : {};
-        getBal({ data: undefined as never, headers })
-          .then(({ balance }) => setBalance(balance))
-          .catch(() => {});
+        void refreshBalance();
       }
     });
-  }, [getBal]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-  async function handleBuy(id: "starter" | "popular" | "value" | "pro") {
+  // After returning from checkout, poll briefly while the payment is confirmed.
+  useEffect(() => {
+    if (checkout !== "success") return;
+    toast.success("Payment received — adding your coins…");
+    let tries = 0;
+    const timer = setInterval(() => {
+      tries += 1;
+      void refreshBalance();
+      if (tries >= 8) clearInterval(timer);
+    }, 1500);
+    return () => clearInterval(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [checkout]);
+
+  function handleBuy(priceId: string) {
     if (!authed) {
       toast.error("Sign in first to buy coins");
       return;
     }
-    setBusy(id);
-    try {
-      const headers = await getAuthHeaders();
-      const { balance, coins } = await buy({ data: { packageId: id }, headers });
-      setBalance(balance);
-      toast.success(`Purchase successful — +${coins} coins`);
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Purchase failed");
-    } finally {
-      setBusy(null);
+    if (!paymentsConfigured()) {
+      toast.error("Payments are not available yet");
+      return;
     }
+    setActivePriceId(priceId);
   }
 
+  const returnUrl =
+    typeof window !== "undefined"
+      ? `${window.location.origin}/shop?checkout=success&session_id={CHECKOUT_SESSION_ID}`
+      : "";
 
   return (
-    <div className="relative min-h-screen overflow-hidden">
+    <div className="relative min-h-screen overflow-y-auto">
       <div className="pointer-events-none absolute inset-0 grid-bg opacity-20" />
       <div className="pointer-events-none absolute -top-40 -left-40 h-96 w-96 rounded-full bg-[var(--neon-pink)] opacity-20 blur-3xl animate-blob" />
       <div className="pointer-events-none absolute -bottom-40 -right-40 h-96 w-96 rounded-full bg-[var(--neon-cyan)] opacity-20 blur-3xl animate-blob [animation-delay:-6s]" />
 
-      <main className="relative mx-auto max-w-4xl px-4 py-10">
+      <PaymentTestModeBanner />
+
+      <main className="relative mx-auto max-w-4xl px-4 py-8">
         <Link
           to="/"
           className="mb-6 inline-flex items-center gap-1.5 text-xs uppercase tracking-[0.2em] text-muted-foreground transition-colors hover:text-[var(--neon-pink)]"
@@ -109,7 +141,7 @@ function ShopPage() {
           {PACKAGES.map((pkg) => (
             <div
               key={pkg.id}
-              className={`relative overflow-hidden rounded-2xl border border-border bg-[var(--gradient-card)] p-5 shadow-xl transition-transform hover:-translate-y-1`}
+              className="relative overflow-hidden rounded-2xl border border-border bg-[var(--gradient-card)] p-5 shadow-xl transition-transform hover:-translate-y-1"
             >
               <div className={`pointer-events-none absolute inset-0 bg-gradient-to-br ${pkg.gradient} opacity-60`} />
               <div className="relative flex flex-col gap-4">
@@ -125,11 +157,10 @@ function ShopPage() {
                 <p className="text-xs uppercase tracking-widest text-muted-foreground">coins</p>
                 <p className="text-2xl font-black">{pkg.price}</p>
                 <Button
-                  onClick={() => handleBuy(pkg.id)}
-                  disabled={busy === pkg.id}
+                  onClick={() => handleBuy(pkg.priceId)}
                   className="h-11 w-full bg-[var(--gradient-accent)] font-bold text-background hover:opacity-90"
                 >
-                  {busy === pkg.id ? <Loader2 className="h-4 w-4 animate-spin" /> : "Buy"}
+                  Buy
                 </Button>
               </div>
             </div>
@@ -137,9 +168,24 @@ function ShopPage() {
         </div>
 
         <p className="mt-6 text-center text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
-          Demo prices · payments coming soon
+          Secure card payment · coins are added automatically
         </p>
       </main>
+
+      {activePriceId && (
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-background/95 backdrop-blur">
+          <div className="mx-auto max-w-2xl px-4 py-6">
+            <button
+              type="button"
+              onClick={() => setActivePriceId(null)}
+              className="mb-4 inline-flex items-center gap-1.5 text-xs uppercase tracking-[0.2em] text-muted-foreground hover:text-[var(--neon-pink)]"
+            >
+              <X className="h-3.5 w-3.5" /> Cancel
+            </button>
+            <StripeEmbeddedCheckout priceId={activePriceId} returnUrl={returnUrl} />
+          </div>
+        </div>
+      )}
     </div>
   );
 }
