@@ -72,7 +72,7 @@ export async function createCoinCheckoutSession(params: {
     // this), Link and PayPal. Cash App Pay intentionally excluded.
     // Some methods may not be activated on the account (e.g. PayPal in live
     // mode), so fall back progressively instead of failing checkout.
-    const methodSets: Stripe.Checkout.SessionCreateParams.PaymentMethodType[][] = [
+    const methodSets: string[][] = [
       ["card", "link", "paypal"],
       ["card", "link"],
       ["card"],
