@@ -33,6 +33,7 @@ import {
   sendMessageFn,
 } from "@/lib/matchmaking.functions";
 import { getBalanceFn } from "@/lib/coins.functions";
+import { deleteAccountFn } from "@/lib/account.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -333,6 +334,24 @@ export default function ChatApp() {
     await supabase.auth.signOut();
     setProfile(EMPTY_PROFILE);
     setStage("intro");
+  }
+
+  const deleteAccountCall = useServerFn(deleteAccountFn);
+
+  async function handleDeleteAccount() {
+    try {
+      await deleteAccountCall({});
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not delete account");
+      return;
+    }
+    localStorage.removeItem("blink_chat_profile_v2");
+    localStorage.removeItem("blink_chat_client_id");
+    await supabase.auth.signOut();
+    setProfile(EMPTY_PROFILE);
+    setBalance(null);
+    setStage("intro");
+    toast.success("Your account has been deleted");
   }
 
   function handleGetStarted() {
