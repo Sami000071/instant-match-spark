@@ -87,6 +87,7 @@ function RootComponent() {
       </div>
       <Footer />
       <Toaster />
+      <ConsentBanner />
     </div>
   );
 }
