@@ -14,6 +14,7 @@ import { Route as ShopRouteImport } from './routes/shop'
 import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as ContactRouteImport } from './routes/contact'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AdminReportsRouteImport } from './routes/admin.reports'
 import { Route as ApiPublicPaymentsWebhookRouteImport } from './routes/api/public/payments/webhook'
 
 const TermsRoute = TermsRouteImport.update({
@@ -41,6 +42,11 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminReportsRoute = AdminReportsRouteImport.update({
+  id: '/admin/reports',
+  path: '/admin/reports',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicPaymentsWebhookRoute =
   ApiPublicPaymentsWebhookRouteImport.update({
     id: '/api/public/payments/webhook',
@@ -54,6 +60,7 @@ export interface FileRoutesByFullPath {
   '/privacy': typeof PrivacyRoute
   '/shop': typeof ShopRoute
   '/terms': typeof TermsRoute
+  '/admin/reports': typeof AdminReportsRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
 }
 export interface FileRoutesByTo {
@@ -62,6 +69,7 @@ export interface FileRoutesByTo {
   '/privacy': typeof PrivacyRoute
   '/shop': typeof ShopRoute
   '/terms': typeof TermsRoute
+  '/admin/reports': typeof AdminReportsRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
 }
 export interface FileRoutesById {
@@ -71,6 +79,7 @@ export interface FileRoutesById {
   '/privacy': typeof PrivacyRoute
   '/shop': typeof ShopRoute
   '/terms': typeof TermsRoute
+  '/admin/reports': typeof AdminReportsRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
 }
 export interface FileRouteTypes {
@@ -81,6 +90,7 @@ export interface FileRouteTypes {
     | '/privacy'
     | '/shop'
     | '/terms'
+    | '/admin/reports'
     | '/api/public/payments/webhook'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -89,6 +99,7 @@ export interface FileRouteTypes {
     | '/privacy'
     | '/shop'
     | '/terms'
+    | '/admin/reports'
     | '/api/public/payments/webhook'
   id:
     | '__root__'
@@ -97,6 +108,7 @@ export interface FileRouteTypes {
     | '/privacy'
     | '/shop'
     | '/terms'
+    | '/admin/reports'
     | '/api/public/payments/webhook'
   fileRoutesById: FileRoutesById
 }
@@ -106,6 +118,7 @@ export interface RootRouteChildren {
   PrivacyRoute: typeof PrivacyRoute
   ShopRoute: typeof ShopRoute
   TermsRoute: typeof TermsRoute
+  AdminReportsRoute: typeof AdminReportsRoute
   ApiPublicPaymentsWebhookRoute: typeof ApiPublicPaymentsWebhookRoute
 }
 
@@ -146,6 +159,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/reports': {
+      id: '/admin/reports'
+      path: '/admin/reports'
+      fullPath: '/admin/reports'
+      preLoaderRoute: typeof AdminReportsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/payments/webhook': {
       id: '/api/public/payments/webhook'
       path: '/api/public/payments/webhook'
@@ -162,6 +182,7 @@ const rootRouteChildren: RootRouteChildren = {
   PrivacyRoute: PrivacyRoute,
   ShopRoute: ShopRoute,
   TermsRoute: TermsRoute,
+  AdminReportsRoute: AdminReportsRoute,
   ApiPublicPaymentsWebhookRoute: ApiPublicPaymentsWebhookRoute,
 }
 export const routeTree = rootRouteImport
