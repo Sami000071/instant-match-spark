@@ -32,14 +32,14 @@ export const Route = createRootRoute({
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" },
-      { title: "Lovable App" },
-      { name: "description", content: "Lovable Generated Project" },
-      { name: "author", content: "Lovable" },
-      { property: "og:title", content: "Lovable App" },
-      { property: "og:description", content: "Lovable Generated Project" },
+      { title: "blink" },
+      { name: "description", content: "Real-time anonymous chat with mutual 5-second matches." },
+      { name: "author", content: "blink" },
+      { property: "og:title", content: "blink" },
+      { property: "og:description", content: "Real-time anonymous chat with mutual 5-second matches." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
-      { name: "twitter:site", content: "@Lovable" },
+      { name: "twitter:site", content: "@blink" },
     ],
     links: [
       {
