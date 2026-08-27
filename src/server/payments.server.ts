@@ -68,28 +68,48 @@ export async function createCoinCheckoutSession(params: {
       userId: params.userId,
     });
 
-    const session = await stripe.checkout.sessions.create({
-      line_items: [{ price: stripePrice.id, quantity: 1 }],
-      mode: "payment",
-      ui_mode: "embedded_page",
-      return_url: params.returnUrl,
-      customer: customerId,
-      // Explicit method list: card (Apple Pay / Google Pay wallets ride on
-      // this), Link and PayPal. Cash App Pay intentionally excluded.
-      // Managed Payments cannot be used together with an explicit list.
-      payment_method_types: ["card", "link", "paypal"],
-      payment_intent_data: { description: product.name },
-      automatic_tax: { enabled: true },
-      customer_update: { address: "auto" },
+    // Preferred method list: card (Apple Pay / Google Pay wallets ride on
+    // this), Link and PayPal. Cash App Pay intentionally excluded.
+    // Some methods may not be activated on the account (e.g. PayPal in live
+    // mode), so fall back progressively instead of failing checkout.
+    const methodSets: Stripe.Checkout.SessionCreateParams.PaymentMethodType[][] = [
+      ["card", "link", "paypal"],
+      ["card", "link"],
+      ["card"],
+    ];
 
-      metadata: {
-        userId: params.userId,
-        coins: String(coins),
-        priceId: params.priceId,
-      },
-    } as Stripe.Checkout.SessionCreateParams);
+    let lastError: unknown;
+    for (const paymentMethodTypes of methodSets) {
+      try {
+        const session = await stripe.checkout.sessions.create({
+          line_items: [{ price: stripePrice.id, quantity: 1 }],
+          mode: "payment",
+          ui_mode: "embedded_page",
+          return_url: params.returnUrl,
+          customer: customerId,
+          payment_method_types: paymentMethodTypes,
+          payment_intent_data: { description: product.name },
+          automatic_tax: { enabled: true },
+          customer_update: { address: "auto" },
 
-    return { clientSecret: session.client_secret ?? "" };
+          metadata: {
+            userId: params.userId,
+            coins: String(coins),
+            priceId: params.priceId,
+          },
+        } as Stripe.Checkout.SessionCreateParams);
+
+        return { clientSecret: session.client_secret ?? "" };
+      } catch (error) {
+        lastError = error;
+        const message = getStripeErrorMessage(error);
+        // Only retry when the failure is about an unavailable method type.
+        if (!/payment method type/i.test(message)) throw error;
+      }
+    }
+
+    throw lastError;
+
   } catch (error) {
     return { error: getStripeErrorMessage(error) };
   }
