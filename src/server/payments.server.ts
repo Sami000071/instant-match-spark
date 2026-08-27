@@ -80,6 +80,7 @@ export async function createCoinCheckoutSession(params: {
       payment_method_types: ["card", "link", "paypal"],
       payment_intent_data: { description: product.name },
       automatic_tax: { enabled: true },
+      customer_update: { address: "auto" },
 
       metadata: {
         userId: params.userId,
