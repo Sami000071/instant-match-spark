@@ -74,17 +74,17 @@ export async function createCoinCheckoutSession(params: {
       ui_mode: "embedded_page",
       return_url: params.returnUrl,
       customer: customerId,
-      // Payment methods (card + Apple Pay/Google Pay, Link, PayPal) are
-      // managed by Stripe Managed Payments; passing payment_method_types
-      // here is rejected by the API.
+      // Explicit method list: card (Apple Pay / Google Pay wallets ride on
+      // this), Link and PayPal. Cash App Pay intentionally excluded.
+      // Managed Payments cannot be used together with an explicit list.
+      payment_method_types: ["card", "link", "paypal"],
       payment_intent_data: { description: product.name },
-      managed_payments: { enabled: true },
+      automatic_tax: { enabled: true },
 
       metadata: {
         userId: params.userId,
         coins: String(coins),
         priceId: params.priceId,
-        managed_payments: "true",
       },
     } as Stripe.Checkout.SessionCreateParams);
 
