@@ -1,6 +1,7 @@
 import { Outlet, Link, createRootRoute, HeadContent, Scripts } from "@tanstack/react-router";
 import { Toaster } from "@/components/ui/sonner";
 import Footer from "@/components/Footer";
+import ConsentBanner from "@/components/ConsentBanner";
 
 import appCss from "../styles.css?url";
 
@@ -57,6 +58,13 @@ function RootShell({ children }: { children: React.ReactNode }) {
     <html lang="en">
       <head>
         <HeadContent />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}
+gtag('consent','default',{ad_storage:'denied',ad_user_data:'denied',ad_personalization:'denied',analytics_storage:'denied',wait_for_update:500});
+try{var c=JSON.parse(localStorage.getItem('blink_consent_v1')||'null');if(c){gtag('consent','update',{ad_storage:c.ad_storage?'granted':'denied',ad_user_data:c.ad_user_data?'granted':'denied',ad_personalization:c.ad_personalization?'granted':'denied',analytics_storage:c.analytics_storage?'granted':'denied'});}}catch(e){}`,
+          }}
+        />
         <script
           async
           src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-5882598120330364"

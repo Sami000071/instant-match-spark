@@ -1,4 +1,5 @@
 import { Link } from "@tanstack/react-router";
+import { openConsentSettings } from "@/components/ConsentBanner";
 
 export default function Footer() {
   return (
@@ -20,6 +21,13 @@ export default function Footer() {
           <Link to="/shop" className="transition-colors hover:text-[var(--neon-pink)]">
             Shop
           </Link>
+          <button
+            type="button"
+            onClick={openConsentSettings}
+            className="transition-colors hover:text-[var(--neon-pink)]"
+          >
+            Cookie settings
+          </button>
         </nav>
       </div>
     </footer>
