@@ -2543,13 +2543,13 @@ function ReportDialog({
           </label>
         </div>
 
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
+        <DialogFooter className="flex-row gap-2 sm:justify-end">
+          <Button variant="outline" className="flex-1 sm:flex-none" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
           <Button
             onClick={() => onSubmit(reason, details, alsoBlock)}
-            className="bg-[var(--gradient-accent)] text-background hover:opacity-90"
+            className="flex-1 bg-gradient-to-r from-[var(--neon-pink)] to-[var(--neon-cyan)] text-background hover:opacity-90 sm:flex-none"
           >
             <Flag className="mr-2 h-4 w-4" />
             Submit report
