@@ -104,31 +104,31 @@ function ShopPage() {
       : "";
 
   return (
-    <div className="relative min-h-screen overflow-y-auto">
+    <div className="relative h-full overflow-y-auto overflow-x-hidden">
       <div className="pointer-events-none absolute inset-0 grid-bg opacity-20" />
       <div className="pointer-events-none absolute -top-40 -left-40 h-96 w-96 rounded-full bg-[var(--neon-pink)] opacity-20 blur-3xl animate-blob" />
       <div className="pointer-events-none absolute -bottom-40 -right-40 h-96 w-96 rounded-full bg-[var(--neon-cyan)] opacity-20 blur-3xl animate-blob [animation-delay:-6s]" />
 
       <PaymentTestModeBanner />
 
-      <main className="relative mx-auto max-w-4xl px-4 py-8">
+      <main className="relative mx-auto flex min-h-full max-w-4xl flex-col px-4 py-6">
         <Link
           to="/"
-          className="mb-6 inline-flex items-center gap-1.5 text-xs uppercase tracking-[0.2em] text-muted-foreground transition-colors hover:text-[var(--neon-pink)]"
+          className="mb-4 inline-flex items-center gap-1.5 self-start text-xs uppercase tracking-[0.2em] text-muted-foreground transition-colors hover:text-[var(--neon-pink)]"
         >
           <ArrowLeft className="h-3.5 w-3.5" /> Back home
         </Link>
 
-        <div className="mb-8 flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-end">
-          <div>
-            <h1 className="text-4xl font-black tracking-tight md:text-5xl">
+        <div className="mb-6 flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-end sm:gap-4">
+          <div className="min-w-0">
+            <h1 className="text-3xl font-black tracking-tight sm:text-4xl md:text-5xl">
               Coin <span className="text-gradient">Shop</span>
             </h1>
-            <p className="mt-2 text-sm text-muted-foreground">
+            <p className="mt-1 text-sm text-muted-foreground">
               Top up to enter premium lobbies and unlock future perks.
             </p>
           </div>
-          <div className="flex items-center gap-2 rounded-full border border-[var(--neon-pink)]/40 bg-[var(--neon-pink)]/10 px-4 py-2">
+          <div className="flex shrink-0 items-center gap-2 rounded-full border border-[var(--neon-pink)]/40 bg-[var(--neon-pink)]/10 px-3 py-2 sm:px-4">
             <Coins className="h-4 w-4 text-[var(--neon-pink)]" />
             <span className="text-sm font-bold tabular-nums">
               {authed ? (balance == null ? "…" : balance.toLocaleString()) : "Sign in"}
@@ -137,44 +137,46 @@ function ShopPage() {
           </div>
         </div>
 
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid flex-1 grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {PACKAGES.map((pkg) => (
             <div
               key={pkg.id}
-              className="relative overflow-hidden rounded-2xl border border-border bg-[var(--gradient-card)] p-5 shadow-xl transition-transform hover:-translate-y-1"
+              className="relative flex min-w-0 flex-col overflow-hidden rounded-2xl border border-border bg-[var(--gradient-card)] p-4 shadow-xl transition-transform hover:-translate-y-1 sm:p-5"
             >
               <div className={`pointer-events-none absolute inset-0 bg-gradient-to-br ${pkg.gradient} opacity-60`} />
-              <div className="relative flex flex-col gap-4">
+              <div className="relative flex flex-1 flex-col gap-3 sm:gap-4">
                 {pkg.tag && (
                   <span className="self-start rounded-full border border-[var(--neon-cyan)]/40 bg-[var(--neon-cyan)]/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-[var(--neon-cyan)]">
                     {pkg.tag}
                   </span>
                 )}
                 <div className="flex items-baseline gap-2">
-                  <Coins className="h-7 w-7 text-[var(--neon-pink)]" />
-                  <span className="text-4xl font-black tabular-nums">{pkg.coins}</span>
+                  <Coins className="h-6 w-6 text-[var(--neon-pink)] sm:h-7 sm:w-7" />
+                  <span className="text-3xl font-black tabular-nums sm:text-4xl">{pkg.coins}</span>
                 </div>
                 <p className="text-xs uppercase tracking-widest text-muted-foreground">coins</p>
-                <p className="text-2xl font-black">{pkg.price}</p>
-                <Button
-                  onClick={() => handleBuy(pkg.priceId)}
-                  className="h-11 w-full bg-[var(--gradient-accent)] font-bold text-background hover:opacity-90"
-                >
-                  Buy
-                </Button>
+                <p className="text-xl font-black sm:text-2xl">{pkg.price}</p>
+                <div className="mt-auto pt-2">
+                  <Button
+                    onClick={() => handleBuy(pkg.priceId)}
+                    className="h-11 w-full bg-gradient-to-r from-[var(--neon-pink)] to-[var(--neon-cyan)] font-bold text-background hover:opacity-90"
+                  >
+                    Buy
+                  </Button>
+                </div>
               </div>
             </div>
           ))}
         </div>
 
-        <p className="mt-6 text-center text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+        <p className="mt-4 text-center text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
           Secure card payment · coins are added automatically
         </p>
       </main>
 
       {activePriceId && (
-        <div className="fixed inset-0 z-50 overflow-y-auto bg-background/95 backdrop-blur">
-          <div className="mx-auto max-w-2xl px-4 py-6">
+        <div className="fixed inset-0 z-50 flex flex-col overflow-y-auto overflow-x-hidden bg-background/95 backdrop-blur">
+          <div className="mx-auto w-full max-w-2xl flex-1 px-4 py-6">
             <button
               type="button"
               onClick={() => setActivePriceId(null)}
@@ -182,7 +184,9 @@ function ShopPage() {
             >
               <X className="h-3.5 w-3.5" /> Cancel
             </button>
-            <StripeEmbeddedCheckout priceId={activePriceId} returnUrl={returnUrl} />
+            <div className="w-full overflow-hidden rounded-xl border border-border bg-card p-2 sm:p-4">
+              <StripeEmbeddedCheckout priceId={activePriceId} returnUrl={returnUrl} />
+            </div>
           </div>
         </div>
       )}
