@@ -340,7 +340,7 @@ export default function ChatApp() {
 
   async function handleDeleteAccount() {
     try {
-      await deleteAccountCall({});
+      await deleteAccountCall({ data: undefined as never });
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Could not delete account");
       return;
@@ -1019,6 +1019,7 @@ export default function ChatApp() {
               }}
               onFriends={openFriends}
               onLogout={handleLogout}
+              onDeleteAccount={handleDeleteAccount}
               friendsCount={friends.length}
               onSave={saveProfileToDb}
             />
