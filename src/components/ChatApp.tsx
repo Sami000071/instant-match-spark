@@ -1189,6 +1189,7 @@ function HomeScreen({
   onStart,
   onFriends,
   onLogout,
+  onDeleteAccount,
   friendsCount,
   onSave,
 }: {
@@ -1196,9 +1197,12 @@ function HomeScreen({
   onStart: (p: Profile) => void;
   onFriends: () => void;
   onLogout: () => void;
+  onDeleteAccount: () => Promise<void>;
   friendsCount: number;
   onSave: (p: Profile) => Promise<void>;
 }) {
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [nickname, setNickname] = useState(initial.nickname);
   const [age, setAge] = useState<string>(initial.age != null ? String(initial.age) : "");
   const [country, setCountry] = useState(initial.country);
@@ -1412,6 +1416,45 @@ function HomeScreen({
             Sign out
           </Button>
         </div>
+
+        {!confirmDelete ? (
+          <button
+            type="button"
+            onClick={() => setConfirmDelete(true)}
+            className="w-full text-center text-[10px] uppercase tracking-widest text-muted-foreground transition-colors hover:text-destructive"
+          >
+            Delete account
+          </button>
+        ) : (
+          <div className="space-y-2 rounded-xl border border-destructive/40 bg-destructive/10 p-3">
+            <p className="text-center text-xs font-semibold text-destructive">
+              Delete your account permanently? Your profile, friends and coins will be removed.
+            </p>
+            <div className="grid grid-cols-2 gap-2">
+              <Button
+                variant="outline"
+                disabled={deleting}
+                onClick={() => setConfirmDelete(false)}
+                className="h-9 bg-transparent text-xs font-bold"
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="destructive"
+                disabled={deleting}
+                onClick={async () => {
+                  setDeleting(true);
+                  await onDeleteAccount();
+                  setDeleting(false);
+                }}
+                className="h-9 gap-1.5 text-xs font-bold"
+              >
+                {deleting && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                Yes, delete
+              </Button>
+            </div>
+          </div>
+        )}
 
         <p className="text-center text-[10px] text-muted-foreground">
           Be kind. Reports & blocks keep the community safe. 18+ only.
