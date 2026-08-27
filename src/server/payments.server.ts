@@ -74,8 +74,12 @@ export async function createCoinCheckoutSession(params: {
       ui_mode: "embedded_page",
       return_url: params.returnUrl,
       customer: customerId,
+      // Card enables Apple Pay / Google Pay wallets automatically.
+      // Cash App Pay is intentionally excluded.
+      payment_method_types: ["card", "link", "paypal"],
       payment_intent_data: { description: product.name },
       managed_payments: { enabled: true },
+
       metadata: {
         userId: params.userId,
         coins: String(coins),
