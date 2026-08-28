@@ -185,6 +185,7 @@ export type Database = {
           decide_deadline: string
           ended_reason: string | null
           id: string
+          is_bot: boolean
           left_by: string | null
           lobby: string
           status: Database["public"]["Enums"]["session_status"]
@@ -208,6 +209,7 @@ export type Database = {
           decide_deadline: string
           ended_reason?: string | null
           id?: string
+          is_bot?: boolean
           left_by?: string | null
           lobby?: string
           status?: Database["public"]["Enums"]["session_status"]
@@ -231,6 +233,7 @@ export type Database = {
           decide_deadline?: string
           ended_reason?: string | null
           id?: string
+          is_bot?: boolean
           left_by?: string | null
           lobby?: string
           status?: Database["public"]["Enums"]["session_status"]

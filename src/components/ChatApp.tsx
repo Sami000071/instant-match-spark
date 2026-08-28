@@ -24,6 +24,8 @@ import {
   enforceTimeoutFn,
   findActiveSessionFn,
   joinQueueFn,
+  botMatchFn,
+  botReplyFn,
   leaveQueueFn,
   leaveSessionFn,
   listFriendMessagesFn,
@@ -120,6 +122,7 @@ type SessionRow = {
   decide_deadline: string;
   ended_reason: string | null;
   left_by: string | null;
+  is_bot?: boolean;
 };
 
 type Message = { id: string; sender_client_id: string; content: string; created_at: string };
@@ -187,6 +190,9 @@ export default function ChatApp() {
   const rematchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const join = useServerFn(joinQueueFn);
+  const botMatch = useServerFn(botMatchFn);
+  const botReply = useServerFn(botReplyFn);
+  const botReplyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const decide = useServerFn(decideFn);
   const enforce = useServerFn(enforceTimeoutFn);
   const leaveQ = useServerFn(leaveQueueFn);
@@ -541,6 +547,35 @@ export default function ChatApp() {
       if (timer) clearTimeout(timer);
     };
   }, [stage, profile, join, selectedLobby]);
+
+  // Nobody human waiting? After a short while, pair with an AI companion so the
+  // app never feels empty. AI matches are always free (no coins charged).
+  useEffect(() => {
+    if (stage !== "matching") return;
+    let cancelled = false;
+    const delay = 6000 + Math.random() * 5000;
+    const timer = setTimeout(async () => {
+      if (cancelled) return;
+      try {
+        const headers = await getAuthHeaders();
+        const res = await botMatch({
+          data: { clientId: clientIdRef.current, profile, lobby: selectedLobby },
+          headers,
+        });
+        if (cancelled || !res.session) return;
+        setSession(res.session as SessionRow);
+        setStage(res.session.status === "chatting" ? "chatting" : "deciding");
+      } catch {
+        // keep waiting for a human
+      }
+    }, delay);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [stage, profile, botMatch, selectedLobby]);
+
+
 
   // realtime: subscribe to session updates while deciding/chatting
   useEffect(() => {
@@ -898,12 +933,53 @@ export default function ChatApp() {
       await sendMsg({
         data: { sessionId: session.id, clientId: clientIdRef.current, content },
       });
+      nudgeBot();
     } catch {
       setPending((p) =>
         p.map((x) => (x.tempId === id ? { ...x, status: "failed" as const } : x)),
       );
     }
   }
+
+  // If the partner is an AI companion, ask the server for its next reply after a
+  // short human-like pause, showing the typing indicator meanwhile.
+  function nudgeBot(extraDelay = 0) {
+    const s = session;
+    if (!s?.is_bot) return;
+    if (botReplyTimerRef.current) clearTimeout(botReplyTimerRef.current);
+    botReplyTimerRef.current = setTimeout(async () => {
+      setPartnerTyping(true);
+      try {
+        const headers = await getAuthHeaders();
+        await botReply({
+          data: { sessionId: s.id, clientId: clientIdRef.current },
+          headers,
+        });
+      } catch {
+        // silently ignore
+      } finally {
+        setPartnerTyping(false);
+      }
+    }, extraDelay + 900 + Math.random() * 1400);
+  }
+
+  // AI companion sends the opening line once the chat starts.
+  const botOpenedRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (stage !== "chatting" || !session?.is_bot) return;
+    if (messages.length > 0) return;
+    if (botOpenedRef.current === session.id) return;
+    botOpenedRef.current = session.id;
+    nudgeBot(800);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stage, session?.id, session?.is_bot, messages.length]);
+
+  useEffect(() => {
+    return () => {
+      if (botReplyTimerRef.current) clearTimeout(botReplyTimerRef.current);
+    };
+  }, []);
+
 
   async function onSend() {
     if (!session || !draft.trim()) return;

@@ -1,0 +1,1 @@
+ALTER TABLE public.match_sessions ADD COLUMN IF NOT EXISTS is_bot boolean NOT NULL DEFAULT false;
