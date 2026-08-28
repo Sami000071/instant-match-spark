@@ -908,6 +908,10 @@ export default function ChatApp() {
   async function onSend() {
     if (!session || !draft.trim()) return;
     const content = draft.trim();
+    if (maskProfanity(content).blocked) {
+      toast.error("Message blocked: inappropriate language is not allowed");
+      return;
+    }
     setDraft("");
     await deliver(content);
   }
@@ -2833,12 +2837,17 @@ function FriendChatScreen({
   async function onSend() {
     const content = draft.trim();
     if (!content) return;
+    if (maskProfanity(content).blocked) {
+      toast.error("Message blocked: inappropriate language is not allowed");
+      return;
+    }
     setDraft("");
     try {
       await sendFn({
         data: { clientId, otherId: friend.clientId, content },
       });
-    } catch {
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Message could not be sent");
       setDraft(content);
     }
   }
