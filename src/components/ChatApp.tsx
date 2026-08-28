@@ -190,6 +190,9 @@ export default function ChatApp() {
   const rematchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const join = useServerFn(joinQueueFn);
+  const botMatch = useServerFn(botMatchFn);
+  const botReply = useServerFn(botReplyFn);
+  const botReplyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const decide = useServerFn(decideFn);
   const enforce = useServerFn(enforceTimeoutFn);
   const leaveQ = useServerFn(leaveQueueFn);
