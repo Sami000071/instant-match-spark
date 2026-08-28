@@ -963,6 +963,23 @@ export default function ChatApp() {
     }, extraDelay + 900 + Math.random() * 1400);
   }
 
+  // AI companion sends the opening line once the chat starts.
+  const botOpenedRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (stage !== "chatting" || !session?.is_bot) return;
+    if (messages.length > 0) return;
+    if (botOpenedRef.current === session.id) return;
+    botOpenedRef.current = session.id;
+    nudgeBot(800);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stage, session?.id, session?.is_bot, messages.length]);
+
+  useEffect(() => {
+    return () => {
+      if (botReplyTimerRef.current) clearTimeout(botReplyTimerRef.current);
+    };
+  }, []);
+
 
   async function onSend() {
     if (!session || !draft.trim()) return;
