@@ -933,12 +933,36 @@ export default function ChatApp() {
       await sendMsg({
         data: { sessionId: session.id, clientId: clientIdRef.current, content },
       });
+      nudgeBot();
     } catch {
       setPending((p) =>
         p.map((x) => (x.tempId === id ? { ...x, status: "failed" as const } : x)),
       );
     }
   }
+
+  // If the partner is an AI companion, ask the server for its next reply after a
+  // short human-like pause, showing the typing indicator meanwhile.
+  function nudgeBot(extraDelay = 0) {
+    const s = session;
+    if (!s?.is_bot) return;
+    if (botReplyTimerRef.current) clearTimeout(botReplyTimerRef.current);
+    botReplyTimerRef.current = setTimeout(async () => {
+      setPartnerTyping(true);
+      try {
+        const headers = await getAuthHeaders();
+        await botReply({
+          data: { sessionId: s.id, clientId: clientIdRef.current },
+          headers,
+        });
+      } catch {
+        // silently ignore
+      } finally {
+        setPartnerTyping(false);
+      }
+    }, extraDelay + 900 + Math.random() * 1400);
+  }
+
 
   async function onSend() {
     if (!session || !draft.trim()) return;
