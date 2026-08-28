@@ -548,32 +548,8 @@ export default function ChatApp() {
     };
   }, [stage, profile, join, selectedLobby]);
 
-  // Nobody human waiting? After a short while, pair with an AI companion so the
-  // app never feels empty. AI matches are always free (no coins charged).
-  useEffect(() => {
-    if (stage !== "matching") return;
-    let cancelled = false;
-    const delay = 6000 + Math.random() * 5000;
-    const timer = setTimeout(async () => {
-      if (cancelled) return;
-      try {
-        const headers = await getAuthHeaders();
-        const res = await botMatch({
-          data: { clientId: clientIdRef.current, profile, lobby: selectedLobby },
-          headers,
-        });
-        if (cancelled || !res.session) return;
-        setSession(res.session as SessionRow);
-        setStage(res.session.status === "chatting" ? "chatting" : "deciding");
-      } catch {
-        // keep waiting for a human
-      }
-    }, delay);
-    return () => {
-      cancelled = true;
-      clearTimeout(timer);
-    };
-  }, [stage, profile, botMatch, selectedLobby]);
+
+
 
 
 
