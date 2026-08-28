@@ -312,8 +312,11 @@ export async function sendMessage(sessionId: string, clientId: string, content: 
   }
   const trimmed = content.trim().slice(0, 1000);
   if (!trimmed) throw new Error("Empty message");
-  // Observer: mask banned words before the message is stored/broadcast.
-  const { clean } = maskProfanity(trimmed);
+  // Observer: reject banned words — the message is never stored/broadcast.
+  if (maskProfanity(trimmed).blocked) {
+    throw new Error("Message blocked: inappropriate language is not allowed");
+  }
+  const clean = trimmed;
 
   const { error } = await supabaseAdmin.from("messages").insert({
     session_id: sessionId,
@@ -515,7 +518,10 @@ export async function sendFriendMessage(
   const pairKey = await assertFriendship(fromClientId, toClientId);
   const trimmed = content.trim().slice(0, 1000);
   if (!trimmed) throw new Error("Empty message");
-  const { clean } = maskProfanity(trimmed);
+  if (maskProfanity(trimmed).blocked) {
+    throw new Error("Message blocked: inappropriate language is not allowed");
+  }
+  const clean = trimmed;
   const { error } = await supabaseAdmin.from("friend_messages").insert({
     pair_key: pairKey,
     from_client_id: fromClientId,
