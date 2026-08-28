@@ -207,23 +207,3 @@ export const listFriendMessagesFn = createServerFn({ method: "POST" })
 // ── AI companions ────────────────────────────────────────────────────────
 // Matches the user with an AI companion when nobody human is waiting.
 // Never charges coins.
-export const botMatchFn = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .inputValidator(z.object({ clientId: uuid, profile: profileSchema, lobby }).parse)
-  .handler(async ({ data }) => {
-    const { findActiveSession } = await import("@/server/matchmaking.server");
-    const existing = await findActiveSession(data.clientId);
-    if (existing) return { session: existing };
-    const { createBotSession } = await import("@/server/bots.server");
-    const session = await createBotSession(data.clientId, data.profile, data.lobby);
-    return { session };
-  });
-
-export const botReplyFn = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .inputValidator(z.object({ sessionId: uuid, clientId: uuid }).parse)
-  .handler(async ({ data }) => {
-    const { botReply } = await import("@/server/bots.server");
-    return botReply(data.sessionId, data.clientId);
-  });
-
