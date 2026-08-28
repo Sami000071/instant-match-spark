@@ -942,13 +942,25 @@ export default function ChatApp() {
   }
 
   // If the partner is an AI companion, ask the server for its next reply after a
-  // short human-like pause, showing the typing indicator meanwhile.
+  // human-like pause. Show the typing indicator immediately so it feels like
+  // someone is actually reading and typing back.
   function nudgeBot(extraDelay = 0) {
     const s = session;
     if (!s?.is_bot) return;
     if (botReplyTimerRef.current) clearTimeout(botReplyTimerRef.current);
+    setPartnerTyping(true);
+
+    let lastHumanLen = 0;
+    for (let i = messages.length - 1; i >= 0; i--) {
+      if (messages[i]!.sender_client_id !== s.user_a_client_id) {
+        lastHumanLen = messages[i]!.content.length;
+        break;
+      }
+    }
+    const charDelay = lastHumanLen * 45;
+    const delay = Math.min(1200 + extraDelay + charDelay + Math.random() * 1500, 9000);
+
     botReplyTimerRef.current = setTimeout(async () => {
-      setPartnerTyping(true);
       try {
         const headers = await getAuthHeaders();
         await botReply({
@@ -960,7 +972,7 @@ export default function ChatApp() {
       } finally {
         setPartnerTyping(false);
       }
-    }, extraDelay + 900 + Math.random() * 1400);
+    }, delay);
   }
 
   // AI companion sends the opening line once the chat starts.
@@ -970,7 +982,7 @@ export default function ChatApp() {
     if (messages.length > 0) return;
     if (botOpenedRef.current === session.id) return;
     botOpenedRef.current = session.id;
-    nudgeBot(800);
+    nudgeBot(2000);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stage, session?.id, session?.is_bot, messages.length]);
 

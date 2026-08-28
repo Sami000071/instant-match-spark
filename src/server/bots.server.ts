@@ -151,6 +151,10 @@ export async function botReply(sessionId: string, requesterClientId: string) {
   text = text.replace(/^["']|["']$/g, "").slice(0, 400);
   if (!text || maskProfanity(text).blocked) return { ok: false as const };
 
+  // Simulate a real person typing out the message before it appears.
+  const typingDelay = Math.min(600 + text.length * 40 + Math.random() * 1200, 6500);
+  await new Promise((resolve) => setTimeout(resolve, typingDelay));
+
   await supabaseAdmin.from("messages").insert({
     session_id: sessionId,
     sender_client_id: bot.clientId,
