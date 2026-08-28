@@ -978,7 +978,7 @@ export default function ChatApp() {
     if (messages.length > 0) return;
     if (botOpenedRef.current === session.id) return;
     botOpenedRef.current = session.id;
-    nudgeBot(800);
+    nudgeBot(2000);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stage, session?.id, session?.is_bot, messages.length]);
 
