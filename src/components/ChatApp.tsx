@@ -24,6 +24,8 @@ import {
   enforceTimeoutFn,
   findActiveSessionFn,
   joinQueueFn,
+  botMatchFn,
+  botReplyFn,
   leaveQueueFn,
   leaveSessionFn,
   listFriendMessagesFn,
@@ -120,6 +122,7 @@ type SessionRow = {
   decide_deadline: string;
   ended_reason: string | null;
   left_by: string | null;
+  is_bot?: boolean;
 };
 
 type Message = { id: string; sender_client_id: string; content: string; created_at: string };
