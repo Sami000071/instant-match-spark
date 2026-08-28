@@ -881,11 +881,13 @@ export default function ChatApp() {
 
   async function deliver(raw: string, tempId?: string) {
     if (!session) return;
-    // Observer: mask banned words locally so the optimistic bubble matches
-    // what the server stores (the server masks again as source of truth).
+    // Observer: reject banned words locally (the server rejects too).
     const isAttachment = raw.startsWith("voice:") || raw.startsWith("image:");
-    const masked = isAttachment ? raw : maskProfanity(raw).clean;
-    const content = masked;
+    if (!isAttachment && maskProfanity(raw).blocked) {
+      toast.error("Message blocked: inappropriate language is not allowed");
+      return;
+    }
+    const content = raw;
     const id = tempId ?? `tmp-${Date.now()}-${Math.random().toString(36).slice(2)}`;
     setPending((p) =>
       tempId
@@ -906,6 +908,10 @@ export default function ChatApp() {
   async function onSend() {
     if (!session || !draft.trim()) return;
     const content = draft.trim();
+    if (maskProfanity(content).blocked) {
+      toast.error("Message blocked: inappropriate language is not allowed");
+      return;
+    }
     setDraft("");
     await deliver(content);
   }
@@ -2831,12 +2837,17 @@ function FriendChatScreen({
   async function onSend() {
     const content = draft.trim();
     if (!content) return;
+    if (maskProfanity(content).blocked) {
+      toast.error("Message blocked: inappropriate language is not allowed");
+      return;
+    }
     setDraft("");
     try {
       await sendFn({
         data: { clientId, otherId: friend.clientId, content },
       });
-    } catch {
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Message could not be sent");
       setDraft(content);
     }
   }
