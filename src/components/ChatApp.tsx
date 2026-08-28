@@ -950,10 +950,14 @@ export default function ChatApp() {
     if (botReplyTimerRef.current) clearTimeout(botReplyTimerRef.current);
     setPartnerTyping(true);
 
-    const lastHumanMsg = messages.findLast(
-      (m) => m.sender_client_id !== s.user_a_client_id,
-    );
-    const charDelay = (lastHumanMsg?.content.length ?? 0) * 45;
+    let lastHumanLen = 0;
+    for (let i = messages.length - 1; i >= 0; i--) {
+      if (messages[i]!.sender_client_id !== s.user_a_client_id) {
+        lastHumanLen = messages[i]!.content.length;
+        break;
+      }
+    }
+    const charDelay = lastHumanLen * 45;
     const delay = Math.min(1200 + extraDelay + charDelay + Math.random() * 1500, 9000);
 
     botReplyTimerRef.current = setTimeout(async () => {
