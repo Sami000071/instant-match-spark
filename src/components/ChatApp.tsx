@@ -881,11 +881,13 @@ export default function ChatApp() {
 
   async function deliver(raw: string, tempId?: string) {
     if (!session) return;
-    // Observer: mask banned words locally so the optimistic bubble matches
-    // what the server stores (the server masks again as source of truth).
+    // Observer: reject banned words locally (the server rejects too).
     const isAttachment = raw.startsWith("voice:") || raw.startsWith("image:");
-    const masked = isAttachment ? raw : maskProfanity(raw).clean;
-    const content = masked;
+    if (!isAttachment && maskProfanity(raw).blocked) {
+      toast.error("Message blocked: inappropriate language is not allowed");
+      return;
+    }
+    const content = raw;
     const id = tempId ?? `tmp-${Date.now()}-${Math.random().toString(36).slice(2)}`;
     setPending((p) =>
       tempId
