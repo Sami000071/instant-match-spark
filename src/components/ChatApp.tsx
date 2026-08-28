@@ -2316,23 +2316,11 @@ function ChatScreen({
                 <span className="text-[11px] font-semibold text-muted-foreground">{otherAge}</span>
               )}
               {country && <span title={country.name}>{country.flag}</span>}
-              {session.is_bot && (
-                <span className="rounded-full border border-[var(--neon-cyan)]/50 bg-[var(--neon-cyan)]/10 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-[var(--neon-cyan)]">
-                  AI
-                </span>
-              )}
             </p>
-            {session.is_bot ? (
-              <p className="flex items-center gap-1 text-[10px] uppercase tracking-wider text-[var(--neon-cyan)]">
-                <span className="inline-block h-1.5 w-1.5 rounded-full bg-[var(--neon-cyan)]" />
-                AI companion · not a real person
-              </p>
-            ) : (
-              <p className="flex items-center gap-1 text-[10px] uppercase tracking-wider text-[var(--neon-lime)]">
-                <span className="inline-block h-1.5 w-1.5 rounded-full bg-[var(--neon-lime)]" />
-                connected
-              </p>
-            )}
+            <p className="flex items-center gap-1 text-[10px] uppercase tracking-wider text-[var(--neon-lime)]">
+              <span className="inline-block h-1.5 w-1.5 rounded-full bg-[var(--neon-lime)]" />
+              connected
+            </p>
           </div>
         </div>
         <div className="flex items-center gap-1">
