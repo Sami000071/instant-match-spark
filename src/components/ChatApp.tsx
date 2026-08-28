@@ -12,6 +12,7 @@ import {
   type Profile,
 } from "@/lib/client-id";
 import { addBlocked } from "@/lib/blocks";
+import { maskProfanity, validateNickname } from "@/lib/profanity";
 import { COUNTRIES, findCountry } from "@/lib/countries";
 import {
   addFriendFn,
@@ -257,6 +258,8 @@ export default function ChatApp() {
 
   async function saveProfileToDb(p: Profile) {
     if (!authUserId) throw new Error("Not signed in");
+    const nameCheck = validateNickname(p.nickname);
+    if (!nameCheck.ok) throw new Error(nameCheck.reason ?? "Name not allowed");
     if (p.age == null || p.age < 18) throw new Error("You must be 18 or older");
     const { error } = await supabase
       .from("profiles")
@@ -876,8 +879,13 @@ export default function ChatApp() {
     refreshBalance();
   }
 
-  async function deliver(content: string, tempId?: string) {
+  async function deliver(raw: string, tempId?: string) {
     if (!session) return;
+    // Observer: mask banned words locally so the optimistic bubble matches
+    // what the server stores (the server masks again as source of truth).
+    const isAttachment = raw.startsWith("voice:") || raw.startsWith("image:");
+    const masked = isAttachment ? raw : maskProfanity(raw).clean;
+    const content = masked;
     const id = tempId ?? `tmp-${Date.now()}-${Math.random().toString(36).slice(2)}`;
     setPending((p) =>
       tempId
@@ -1217,7 +1225,9 @@ function HomeScreen({
   const ageNum = Number.parseInt(age, 10);
   const ageValid = Number.isFinite(ageNum) && ageNum >= 18 && ageNum <= 120;
   const genderValid = gender === "male" || gender === "female";
-  const valid = nickname.trim().length >= 1 && nickname.trim().length <= 24 && ageValid && genderValid;
+  const nameCheck = validateNickname(nickname);
+  const nameError = nickname.trim().length > 0 && !nameCheck.ok ? nameCheck.reason : null;
+  const valid = nameCheck.ok && ageValid && genderValid;
 
   async function handleFile(file: File) {
     if (!file.type.startsWith("image/")) return;
@@ -1325,6 +1335,9 @@ function HomeScreen({
               placeholder="ghost42"
               className="h-10 bg-input/60 text-sm"
             />
+            {nameError && (
+              <p className="text-[10px] font-medium text-destructive">{nameError}</p>
+            )}
           </div>
           <div className="space-y-1">
             <label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">

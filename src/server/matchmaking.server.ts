@@ -2,6 +2,7 @@
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import type { Database } from "@/integrations/supabase/types";
 import { LOBBY_COST, spendCoins } from "./coins.server";
+import { maskProfanity, validateNickname } from "@/lib/profanity";
 
 type SessionUpdate = Database["public"]["Tables"]["match_sessions"]["Update"];
 
@@ -97,6 +98,10 @@ export async function joinQueueAndTryMatch(
   lobby: Lobby = "any",
   authUserId: string | null = null,
 ): Promise<{ session: MatchSession | null; charged?: number; balance?: number }> {
+  // Observer: reject disallowed nicknames before entering the queue.
+  const nameCheck = validateNickname(profile.nickname ?? "");
+  if (!nameCheck.ok) throw new Error(nameCheck.reason ?? "NICKNAME_NOT_ALLOWED");
+
   // Reconnect path: if already in an active session, return it.
   const existing = await findActiveSession(clientId);
   if (existing) return { session: existing };
@@ -307,11 +312,13 @@ export async function sendMessage(sessionId: string, clientId: string, content: 
   }
   const trimmed = content.trim().slice(0, 1000);
   if (!trimmed) throw new Error("Empty message");
+  // Observer: mask banned words before the message is stored/broadcast.
+  const { clean } = maskProfanity(trimmed);
 
   const { error } = await supabaseAdmin.from("messages").insert({
     session_id: sessionId,
     sender_client_id: clientId,
-    content: trimmed,
+    content: clean,
   });
   if (error) throw error;
 }
@@ -508,11 +515,12 @@ export async function sendFriendMessage(
   const pairKey = await assertFriendship(fromClientId, toClientId);
   const trimmed = content.trim().slice(0, 1000);
   if (!trimmed) throw new Error("Empty message");
+  const { clean } = maskProfanity(trimmed);
   const { error } = await supabaseAdmin.from("friend_messages").insert({
     pair_key: pairKey,
     from_client_id: fromClientId,
     to_client_id: toClientId,
-    content: trimmed,
+    content: clean,
   });
   if (error) throw error;
 }
