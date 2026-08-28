@@ -12,6 +12,7 @@ import {
   type Profile,
 } from "@/lib/client-id";
 import { addBlocked } from "@/lib/blocks";
+import { maskProfanity, validateNickname } from "@/lib/profanity";
 import { COUNTRIES, findCountry } from "@/lib/countries";
 import {
   addFriendFn,
@@ -878,8 +879,13 @@ export default function ChatApp() {
     refreshBalance();
   }
 
-  async function deliver(content: string, tempId?: string) {
+  async function deliver(raw: string, tempId?: string) {
     if (!session) return;
+    // Observer: mask banned words locally so the optimistic bubble matches
+    // what the server stores (the server masks again as source of truth).
+    const isAttachment = raw.startsWith("voice:") || raw.startsWith("image:");
+    const masked = isAttachment ? raw : maskProfanity(raw).clean;
+    const content = masked;
     const id = tempId ?? `tmp-${Date.now()}-${Math.random().toString(36).slice(2)}`;
     setPending((p) =>
       tempId
