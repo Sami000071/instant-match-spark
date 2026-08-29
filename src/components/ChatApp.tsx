@@ -1695,6 +1695,14 @@ function MatchingScreen({
         <p className="text-2xl font-bold">Looking for someone…</p>
         <p className="mt-1 text-sm text-muted-foreground">Hold tight, this is usually quick.</p>
       </div>
+      <div className="flex items-start gap-2 rounded-xl border border-border/60 bg-card/40 px-3.5 py-2.5 text-xs text-muted-foreground max-w-xs">
+        <Users className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[var(--neon-cyan)]/70" />
+        <p>
+          blink is still growing — if no one's online right now,
+          we'll connect you with an AI companion so you're never left
+          waiting.
+        </p>
+      </div>
       <div className="flex flex-col items-center gap-2">
         <Button variant="ghost" onClick={onCancel} className="text-muted-foreground">
           Cancel
