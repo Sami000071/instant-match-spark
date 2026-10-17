@@ -7,7 +7,6 @@ import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { getBalanceFn } from "@/lib/coins.functions";
 import { StripeEmbeddedCheckout } from "@/components/StripeEmbeddedCheckout";
-import { PaymentTestModeBanner } from "@/components/PaymentTestModeBanner";
 import { paymentsConfigured } from "@/lib/stripe";
 
 export const Route = createFileRoute("/shop")({
@@ -109,7 +108,6 @@ function ShopPage() {
       <div className="pointer-events-none absolute -top-40 -left-40 h-96 w-96 rounded-full bg-[var(--neon-pink)] opacity-20 blur-3xl animate-blob" />
       <div className="pointer-events-none absolute -bottom-40 -right-40 h-96 w-96 rounded-full bg-[var(--neon-cyan)] opacity-20 blur-3xl animate-blob [animation-delay:-6s]" />
 
-      <PaymentTestModeBanner />
 
       <main className="relative mx-auto flex min-h-full max-w-4xl flex-col px-4 py-6">
         <Link
